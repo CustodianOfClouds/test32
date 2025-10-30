@@ -17,7 +17,7 @@ Your program will allow the user to specify:
 
 The program must read input from **standard input** and write output to **standard output**, supporting I/O redirection.  It must use **bit-level I/O** via the given `BinaryStdIn` / `BinaryStdOut` classes.
 
-> 💡 **Note:** You may reuse parts of your **Lab 4 code** (such as the basic LZW compressor, bit-packing logic, or codebook data structures) as a starting point for this assignment. However, you must extend it to support variable codeword widths, the four eviction policies (`reset`, `freeze`, `lru`, `lfu`), and file-based alphabet configuration.
+> 💡 **Note:** You may reuse parts of your **Lab 4 code** (the LWZmod.java file) (such as the basic LZW compressor, bit-packing logic, or codebook data structures) as a starting point for this assignment. However, you must extend it to support variable codeword widths, the four eviction policies (`reset`, `freeze`, `lru`, `lfu`), and file-based alphabet configuration.
 
 ⚙️ Implementation Note: This assignment implements a byte-by-byte version of the LZW compression algorithm. Each symbol in the input stream corresponds to a single byte.
 
@@ -286,6 +286,7 @@ Submit your completed Java project to GradeScope:
   * Adherence to Java naming conventions
 
 ---
+
 
 
 
