@@ -182,6 +182,7 @@ public class LZWTool {
 
         // Check policy once and store as boolean for fast checking in hot loop
         boolean resetPolicy = policy.equals("reset");
+        boolean lfuPolicy = policy.equals("lfu");
         int RESET_CODE = resetPolicy ? nextCode++ : -1;
         int initialNextCode = nextCode;
 
@@ -192,6 +193,20 @@ public class LZWTool {
             for (int i = 0; i < alphabetSize; i++) {
                 alphabetKeys[i] = new StringBuilder(alphabet.get(i));
             }
+        }
+
+        // LFU-specific data structures
+        HashMap<Integer, Integer> frequency = null;
+        HashMap<Integer, StringBuilder> codeToPattern = null;
+        if (lfuPolicy) {
+            frequency = new HashMap<>();
+            codeToPattern = new HashMap<>();
+            // Initialize frequency for alphabet codes
+            for (int i = 0; i < alphabetSize; i++) {
+                frequency.put(i, 0);
+                codeToPattern.put(i, new StringBuilder(alphabet.get(i)));
+            }
+            frequency.put(EOF_CODE, 0);
         }
 
         int W = minW;
@@ -218,13 +233,24 @@ public class LZWTool {
             if (codebook.contains(next)) {
                 current = next;
             } else {
-                BinaryStdOut.write(codebook.get(current), W);
+                int outputCode = codebook.get(current);
+                BinaryStdOut.write(outputCode, W);
+
+                // Track frequency for LFU
+                if (lfuPolicy) {
+                    frequency.put(outputCode, frequency.get(outputCode) + 1);
+                }
 
                 if (nextCode < maxCode) {
                     if (nextCode >= (1 << W) && W < maxW)
                         W++;
 
-                    codebook.put(next, nextCode++);
+                    codebook.put(next, nextCode);
+                    if (lfuPolicy) {
+                        frequency.put(nextCode, 0);
+                        codeToPattern.put(nextCode, new StringBuilder(next));
+                    }
+                    nextCode++;
                 } else if (resetPolicy) {
                     // Codebook is full, reset it
                     // First, check if we need to increase W to write RESET_CODE
@@ -247,6 +273,30 @@ public class LZWTool {
 
                     // Don't add the pattern yet - it will be added in future iterations
                     // as we continue processing from the current character
+                } else if (lfuPolicy) {
+                    // Codebook is full, apply LFU policy
+                    // Find the least frequently used code (excluding alphabet and EOF)
+                    int lfuCode = -1;
+                    int minFreq = Integer.MAX_VALUE;
+                    for (int code = alphabetSize + 1; code < nextCode; code++) {
+                        int freq = frequency.get(code);
+                        if (freq < minFreq) {
+                            minFreq = freq;
+                            lfuCode = code;
+                        }
+                    }
+
+                    // Remove the LFU entry from the codebook
+                    if (lfuCode != -1) {
+                        StringBuilder patternToRemove = codeToPattern.get(lfuCode);
+                        // Setting value to null effectively deletes the key
+                        codebook.put(patternToRemove, null);
+
+                        // Reuse the code for the new pattern
+                        codebook.put(next, lfuCode);
+                        frequency.put(lfuCode, 0);
+                        codeToPattern.put(lfuCode, new StringBuilder(next));
+                    }
                 }
                 // else freeze - do nothing
 
@@ -261,7 +311,11 @@ public class LZWTool {
         }
 
         if (current.length() > 0) {
-            BinaryStdOut.write(codebook.get(current), W);
+            int finalCode = codebook.get(current);
+            BinaryStdOut.write(finalCode, W);
+            if (lfuPolicy) {
+                frequency.put(finalCode, frequency.get(finalCode) + 1);
+            }
         }
 
         if (nextCode >= (1 << W) && W < maxW) {
@@ -277,10 +331,21 @@ public class LZWTool {
         int alphabetSize = h.alphabet.size();
         int maxCode = 1 << h.maxW;
         boolean resetPolicy = (h.policy == 1);
+        boolean lfuPolicy = (h.policy == 3);
 
         String[] decodingTable = new String[maxCode];
         for (int i = 0; i < alphabetSize; i++) {
             decodingTable[i] = h.alphabet.get(i);
+        }
+
+        // LFU-specific data structures for decompression
+        HashMap<Integer, Integer> frequency = null;
+        if (lfuPolicy) {
+            frequency = new HashMap<>();
+            // Initialize frequency for alphabet codes
+            for (int i = 0; i < alphabetSize; i++) {
+                frequency.put(i, 0);
+            }
         }
 
         int EOF_CODE = alphabetSize;
@@ -302,6 +367,11 @@ public class LZWTool {
 
         String val = decodingTable[prevCode];
         BinaryStdOut.write(val);
+
+        // Track frequency for LFU
+        if (lfuPolicy) {
+            frequency.put(prevCode, frequency.getOrDefault(prevCode, 0) + 1);
+        }
 
         while (!BinaryStdIn.isEmpty()) {
             if (nextCode >= (1 << W) && W < h.maxW)
@@ -340,8 +410,37 @@ public class LZWTool {
             }
 
             BinaryStdOut.write(s);
-            if (nextCode < maxCode)
-                decodingTable[nextCode++] = val + s.charAt(0);
+
+            // Track frequency for LFU
+            if (lfuPolicy) {
+                frequency.put(codeword, frequency.getOrDefault(codeword, 0) + 1);
+            }
+
+            if (nextCode < maxCode) {
+                decodingTable[nextCode] = val + s.charAt(0);
+                if (lfuPolicy) {
+                    frequency.put(nextCode, 0);
+                }
+                nextCode++;
+            } else if (lfuPolicy) {
+                // Dictionary is full, apply LFU policy
+                // Find the least frequently used code (excluding alphabet and EOF)
+                int lfuCode = -1;
+                int minFreq = Integer.MAX_VALUE;
+                for (int code = alphabetSize + 1; code < nextCode; code++) {
+                    int freq = frequency.getOrDefault(code, 0);
+                    if (freq < minFreq) {
+                        minFreq = freq;
+                        lfuCode = code;
+                    }
+                }
+
+                // Replace the LFU entry with the new pattern
+                if (lfuCode != -1) {
+                    decodingTable[lfuCode] = val + s.charAt(0);
+                    frequency.put(lfuCode, 0);
+                }
+            }
 
             val = s;
         }
