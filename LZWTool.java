@@ -212,11 +212,16 @@ public class LZWTool {
                         W++;
 
                     codebook.put(next, nextCode++);
-                } else if (policy.equals("reset")) {
+                } else {
+                    System.err.println("[ENCODE] Codebook full: nextCode=" + nextCode + ", maxCode=" + maxCode + ", policy=" + policy);
+                    if (policy.equals("reset")) {
                     // Codebook is full, reset it
                     // First, check if we need to increase W to write RESET_CODE
                     if (nextCode >= (1 << W) && W < maxW)
                         W++;
+
+                    System.err.println("[ENCODE] RESET triggered at nextCode=" + nextCode + ", W=" + W);
+                    System.err.println("[ENCODE] Writing RESET_CODE=" + RESET_CODE + " at width W=" + W);
 
                     // Write the RESET marker
                     BinaryStdOut.write(RESET_CODE, W);
@@ -232,10 +237,13 @@ public class LZWTool {
                     nextCode = initialNextCode;
                     W = minW;
 
+                    System.err.println("[ENCODE] After reset: nextCode=" + nextCode + ", W=" + W + ", current='" + current + "'");
+
                     // Don't add the pattern yet - it will be added in future iterations
                     // as we continue processing from the current character
+                    }
+                    // else freeze - do nothing
                 }
-                // else freeze - do nothing
 
                 StringBuilder charCheck = new StringBuilder().append(c);
                 if (!codebook.contains(charCheck)) {
@@ -299,6 +307,8 @@ public class LZWTool {
                 break;
 
             if (resetPolicy && codeword == RESET_CODE) {
+                System.err.println("[DECODE] RESET_CODE detected: " + codeword + " at W=" + W);
+
                 // Reset the decoding table
                 decodingTable = new String[maxCode];
                 for (int i = 0; i < alphabetSize; i++) {
@@ -309,15 +319,33 @@ public class LZWTool {
                 nextCode = initialNextCode;
                 W = h.minW;
 
-                // Read the next code after reset
-                if (nextCode >= (1 << W) && W < h.maxW)
-                    W++;
+                System.err.println("[DECODE] After reset: nextCode=" + nextCode + ", W=" + W);
 
+                // Read the next code after reset
+                if (nextCode >= (1 << W) && W < h.maxW) {
+                    System.err.println("[DECODE] Increasing W from " + W + " to " + (W+1));
+                    W++;
+                }
+
+                System.err.println("[DECODE] Reading next codeword at W=" + W);
                 codeword = BinaryStdIn.readInt(W);
+                System.err.println("[DECODE] Read codeword=" + codeword + " (EOF_CODE=" + EOF_CODE + ")");
+
                 if (codeword == EOF_CODE)
                     break;
 
                 val = decodingTable[codeword];
+                System.err.println("[DECODE] Decoded val='" + val + "'");
+
+                if (val == null) {
+                    System.err.println("[DECODE] ERROR: codeword " + codeword + " not in table! alphabetSize=" + alphabetSize);
+                    System.err.println("[DECODE] Decoding table state:");
+                    for (int i = 0; i < Math.min(20, decodingTable.length); i++) {
+                        if (decodingTable[i] != null)
+                            System.err.println("  [" + i + "] = '" + decodingTable[i] + "'");
+                    }
+                }
+
                 BinaryStdOut.write(val);
                 continue;
             }
