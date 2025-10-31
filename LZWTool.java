@@ -224,9 +224,9 @@ public class LZWTool {
                     // Write the RESET marker
                     BinaryStdOut.write(RESET_CODE, W);
 
-                    // Clear and reinitialize the codebook with alphabet
-                    // Reuse existing TSTmod and pre-created alphabet keys
-                    codebook.clear();
+                    // Reinitialize the codebook with alphabet
+                    // Reuse pre-created alphabet StringBuilders to reduce allocations
+                    codebook = new TSTmod<>();
                     for (int i = 0; i < alphabetSize; i++) {
                         codebook.put(alphabetKeys[i], i);
                     }
