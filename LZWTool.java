@@ -182,6 +182,14 @@ public class LZWTool {
         char c = BinaryStdIn.readChar();
         StringBuilder current = new StringBuilder().append(c);
 
+        // Validate first character is in alphabet
+        Integer firstCode = codebook.get(current);
+        if (firstCode == null) {
+            System.err.println("Error: Input contains byte value " + (int)c +
+                " (0x" + Integer.toHexString(c) + ") which is not in the alphabet");
+            System.exit(1);
+        }
+
         while (!BinaryStdIn.isEmpty()) {
             c = BinaryStdIn.readChar();
             StringBuilder next = new StringBuilder(current).append(c);
@@ -189,7 +197,13 @@ public class LZWTool {
             if (codebook.contains(next)) {
                 current = next;
             } else {
-                BinaryStdOut.write(codebook.get(current), W);
+                Integer code = codebook.get(current);
+                if (code == null) {
+                    System.err.println("Error: Codebook lookup failed for string ending with byte " +
+                        (int)current.charAt(current.length()-1));
+                    System.exit(1);
+                }
+                BinaryStdOut.write(code, W);
 
                 if (nextCode < maxCode) {
                     if (nextCode >= (1 << W) && W < maxW) {
@@ -198,12 +212,24 @@ public class LZWTool {
                     codebook.put(next, nextCode++);
                 }
 
-                current = new StringBuilder().append(c);
+                // Validate the new character is in alphabet
+                StringBuilder charCheck = new StringBuilder().append(c);
+                if (!codebook.contains(charCheck)) {
+                    System.err.println("Error: Input contains byte value " + (int)c +
+                        " (0x" + Integer.toHexString(c) + ") which is not in the alphabet");
+                    System.exit(1);
+                }
+                current = charCheck;
             }
         }
 
         if (current.length() > 0) {
-            BinaryStdOut.write(codebook.get(current), W);
+            Integer code = codebook.get(current);
+            if (code == null) {
+                System.err.println("Error: Codebook lookup failed for final string");
+                System.exit(1);
+            }
+            BinaryStdOut.write(code, W);
         }
 
         BinaryStdOut.write(EOF_CODE, W);
