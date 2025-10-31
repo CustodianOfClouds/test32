@@ -161,13 +161,24 @@ public class LZWTool {
         BinaryStdOut.write(minW, 8);
         BinaryStdOut.write(maxW, 8);
 
-        int policyCode = switch (policy) {
-            case "freeze" -> 0;
-            case "reset" -> 1;
-            case "lru" -> 2;
-            case "lfu" -> 3;
-            default -> 0;
-        };
+        int policyCode;
+        switch (policy) {
+            case "freeze":
+                policyCode = 0;
+                break;
+            case "reset":
+                policyCode = 1;
+                break;
+            case "lru":
+                policyCode = 2;
+                break;
+            case "lfu":
+                policyCode = 3;
+                break;
+            default:
+                policyCode = 0;
+                break;
+        }
         BinaryStdOut.write(policyCode, 8);
         BinaryStdOut.write(alphabet.size(), 16);
 
