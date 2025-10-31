@@ -206,6 +206,9 @@ public class LZWTool {
         h.minW = BinaryStdIn.readInt(8);
         h.maxW = BinaryStdIn.readInt(8);
 
+        // Read policy code (even though we don't use it in expand)
+        int policyCode = BinaryStdIn.readInt(8);
+
         int alphabetSize = BinaryStdIn.readInt(16);
         h.alphabet = new ArrayList<>();
         for (int i = 0; i < alphabetSize; i++) {
