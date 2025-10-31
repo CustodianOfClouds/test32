@@ -171,11 +171,16 @@ public class LZWTool {
 
         TSTmod<Integer> codebook = new TSTmod<>();
         int nextCode = 0;
+        int alphabetSize = alphabet.size();
+
         for (String symbol : alphabet) {
             codebook.put(new StringBuilder(symbol), nextCode++);
         }
 
         int EOF_CODE = nextCode++;
+        int RESET_CODE = policy.equals("reset") ? nextCode++ : -1;
+        int initialNextCode = nextCode;
+
         int W = minW;
         int maxCode = 1 << maxW;
 
@@ -207,7 +212,30 @@ public class LZWTool {
                         W++;
 
                     codebook.put(next, nextCode++);
+                } else if (policy.equals("reset")) {
+                    // Codebook is full, reset it
+                    // First, check if we need to increase W to write RESET_CODE
+                    if (nextCode >= (1 << W) && W < maxW)
+                        W++;
+
+                    // Write the RESET marker
+                    BinaryStdOut.write(RESET_CODE, W);
+
+                    // Reinitialize the codebook with alphabet
+                    codebook = new TSTmod<>();
+                    int code = 0;
+                    for (String symbol : alphabet) {
+                        codebook.put(new StringBuilder(symbol), code++);
+                    }
+
+                    // Reset state
+                    nextCode = initialNextCode;
+                    W = minW;
+
+                    // Don't add the pattern yet - it will be added in future iterations
+                    // as we continue processing from the current character
                 }
+                // else freeze - do nothing
 
                 StringBuilder charCheck = new StringBuilder().append(c);
                 if (!codebook.contains(charCheck)) {
@@ -235,6 +263,7 @@ public class LZWTool {
         Header h = readHeader();
         int alphabetSize = h.alphabet.size();
         int maxCode = 1 << h.maxW;
+        boolean resetPolicy = (h.policy == 1);
 
         String[] decodingTable = new String[maxCode];
         for (int i = 0; i < alphabetSize; i++) {
@@ -242,7 +271,9 @@ public class LZWTool {
         }
 
         int EOF_CODE = alphabetSize;
-        int nextCode = alphabetSize + 1;
+        int RESET_CODE = resetPolicy ? alphabetSize + 1 : -1;
+        int initialNextCode = resetPolicy ? alphabetSize + 2 : alphabetSize + 1;
+        int nextCode = initialNextCode;
         int W = h.minW;
 
         if (BinaryStdIn.isEmpty()) {
@@ -266,6 +297,30 @@ public class LZWTool {
             int codeword = BinaryStdIn.readInt(W);
             if (codeword == EOF_CODE)
                 break;
+
+            if (resetPolicy && codeword == RESET_CODE) {
+                // Reset the decoding table
+                decodingTable = new String[maxCode];
+                for (int i = 0; i < alphabetSize; i++) {
+                    decodingTable[i] = h.alphabet.get(i);
+                }
+
+                // Reset state
+                nextCode = initialNextCode;
+                W = h.minW;
+
+                // Read the next code after reset
+                if (nextCode >= (1 << W) && W < h.maxW)
+                    W++;
+
+                codeword = BinaryStdIn.readInt(W);
+                if (codeword == EOF_CODE)
+                    break;
+
+                val = decodingTable[codeword];
+                BinaryStdOut.write(val);
+                continue;
+            }
 
             String s = decodingTable[codeword];
             if (s == null) {
