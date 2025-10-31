@@ -160,8 +160,7 @@ public class LZWTool {
      * @param alphabet list of symbols in the alphabet
      */
     private static void writeHeader(int minW, int maxW, String policy, List<String> alphabet) {
-        // System.err.println("DEBUG writeHeader: minW=" + minW + ", maxW=" + maxW + ",
-        // policy=" + policy + ", alphabet.size=" + alphabet.size());
+        // System.err.println("DEBUG writeHeader: minW=" + minW + ", maxW=" + maxW + ", policy=" + policy + ", alphabet.size=" + alphabet.size());
         BinaryStdOut.write(minW, 8);
         BinaryStdOut.write(maxW, 8);
 
@@ -185,10 +184,14 @@ public class LZWTool {
         }
         // System.err.println("DEBUG writeHeader: policyCode=" + policyCode);
         BinaryStdOut.write(policyCode, 8);
+        // System.err.println("DEBUG writeHeader: Writing alphabetSize=" + alphabet.size());
         BinaryStdOut.write(alphabet.size(), 16);
 
-        for (String symbol : alphabet) {
-            BinaryStdOut.write(symbol.length() > 0 ? symbol.charAt(0) : 0, 8);
+        for (int i = 0; i < alphabet.size(); i++) {
+            String symbol = alphabet.get(i);
+            char c = symbol.length() > 0 ? symbol.charAt(0) : 0;
+            // System.err.println("DEBUG writeHeader: Writing alphabet char " + i + ": '" + c + "' (" + (int)c + ")");
+            BinaryStdOut.write(c, 8);
         }
         // System.err.println("DEBUG writeHeader: Finished writing header");
     }
@@ -199,6 +202,7 @@ public class LZWTool {
     private static class Header {
         int minW;
         int maxW;
+        String policy;
         List<String> alphabet;
     }
 
@@ -215,18 +219,36 @@ public class LZWTool {
         h.maxW = BinaryStdIn.readInt(8);
         // System.err.println("DEBUG readHeader: maxW=" + h.maxW);
 
-        // Read policy code (even though we don't use it in expand)
+        // Read and decode policy
         int policyCode = BinaryStdIn.readInt(8);
         // System.err.println("DEBUG readHeader: policyCode=" + policyCode);
+        switch (policyCode) {
+            case 0:
+                h.policy = "freeze";
+                break;
+            case 1:
+                h.policy = "reset";
+                break;
+            case 2:
+                h.policy = "lru";
+                break;
+            case 3:
+                h.policy = "lfu";
+                break;
+            default:
+                h.policy = "freeze";
+                break;
+        }
 
         int alphabetSize = BinaryStdIn.readInt(16);
         // System.err.println("DEBUG readHeader: alphabetSize=" + alphabetSize);
         h.alphabet = new ArrayList<>();
         for (int i = 0; i < alphabetSize; i++) {
-            h.alphabet.add(String.valueOf(BinaryStdIn.readChar(8)));
+            char c = BinaryStdIn.readChar(8);
+            // System.err.println("DEBUG readHeader: Read alphabet char " + i + ": '" + c + "' (" + (int)c + ")");
+            h.alphabet.add(String.valueOf(c));
         }
-        // System.err.println("DEBUG readHeader: Finished reading header, alphabet has "
-        // + h.alphabet.size() + " symbols");
+        // System.err.println("DEBUG readHeader: Finished reading header, alphabet has " + h.alphabet.size() + " symbols");
         return h;
     }
 
@@ -242,10 +264,18 @@ public class LZWTool {
         writeHeader(minW, maxW, policy, alphabet);
 
         TSTmod<Integer> codebook = new TSTmod<>();
+        Map<Integer, String> codeToString = new HashMap<>();
+        Map<Integer, Long> lastUsed = new HashMap<>();
+        Map<Integer, Integer> useCount = new HashMap<>();
+        long timestamp = 0;
+
         int nextCode = 0;
+        int alphabetSize = alphabet.size();
 
         for (String symbol : alphabet) {
-            codebook.put(new StringBuilder(symbol), nextCode++);
+            codebook.put(new StringBuilder(symbol), nextCode);
+            codeToString.put(nextCode, symbol);
+            nextCode++;
         }
 
         int EOF_CODE = nextCode++;
@@ -274,12 +304,84 @@ public class LZWTool {
             if (codebook.contains(next)) {
                 current = next;
             } else {
-                BinaryStdOut.write(codebook.get(current), W);
+                int code = codebook.get(current);
+                // System.err.println compress: Writing code " + code + " (width " + W + ") for string \"" + current + "\"");
+                BinaryStdOut.write(code, W);
+
+                // Track usage
+                lastUsed.put(code, timestamp++);
+                useCount.put(code, useCount.getOrDefault(code, 0) + 1);
 
                 if (nextCode < maxCode) {
-                    if (nextCode >= (1 << W) && W < maxW)
+                    if (nextCode >= (1 << W) && W < maxW) {
+                        // System.err.println("DEBUG compress: Increasing W from " + W + " to " + (W+1) + " at nextCode=" + nextCode);
                         W++;
-                    codebook.put(next, nextCode++);
+                    }
+                    // System.err.println("DEBUG compress: Adding code " + nextCode + " for string \"" + next + "\"");
+                    codebook.put(next, nextCode);
+                    codeToString.put(nextCode, next.toString());
+                    nextCode++;
+                } else {
+                    // Codebook is full, apply policy
+                    // System.err.println compress: Codebook full (nextCode=" + nextCode + ", maxCode=" + maxCode + "), applying policy: " + policy);
+                    switch (policy) {
+                        case "reset":
+                            // Reset codebook to alphabet only
+                            // System.err.println compress: Resetting codebook to alphabet");
+                            codebook = new TSTmod<>();
+                            codeToString.clear();
+                            lastUsed.clear();
+                            useCount.clear();
+                            nextCode = 0;
+                            for (String symbol : alphabet) {
+                                codebook.put(new StringBuilder(symbol), nextCode);
+                                codeToString.put(nextCode, symbol);
+                                nextCode++;
+                            }
+                            nextCode++; // Skip EOF_CODE
+                            W = minW;
+                            // System.err.println("DEBUG compress: After reset: nextCode=" + nextCode + ", W=" + W);
+                            break;
+
+                        case "lru":
+                            // Evict least recently used entry
+                            int lruCode = findLRU(lastUsed, alphabetSize, EOF_CODE);
+                            if (lruCode != -1) {
+                                String lruString = codeToString.get(lruCode);
+                                // Delete old mapping by setting value to null
+                                codebook.put(new StringBuilder(lruString), null);
+                                codeToString.remove(lruCode);
+                                lastUsed.remove(lruCode);
+                                useCount.remove(lruCode);
+
+                                // Add new mapping with reused code
+                                codebook.put(next, lruCode);
+                                codeToString.put(lruCode, next.toString());
+                            }
+                            break;
+
+                        case "lfu":
+                            // Evict least frequently used entry
+                            int lfuCode = findLFU(useCount, alphabetSize, EOF_CODE);
+                            if (lfuCode != -1) {
+                                String lfuString = codeToString.get(lfuCode);
+                                // Delete old mapping by setting value to null
+                                codebook.put(new StringBuilder(lfuString), null);
+                                codeToString.remove(lfuCode);
+                                lastUsed.remove(lfuCode);
+                                useCount.remove(lfuCode);
+
+                                // Add new mapping with reused code
+                                codebook.put(next, lfuCode);
+                                codeToString.put(lfuCode, next.toString());
+                            }
+                            break;
+
+                        case "freeze":
+                        default:
+                            // Do nothing - stop adding new codes
+                            break;
+                    }
                 }
 
                 StringBuilder charCheck = new StringBuilder().append(c);
@@ -293,11 +395,54 @@ public class LZWTool {
         }
 
         if (current.length() > 0) {
-            BinaryStdOut.write(codebook.get(current), W);
+            int code = codebook.get(current);
+            // System.err.println compress: Writing final code " + code + " (width " + W + ") for string \"" + current + "\"");
+            BinaryStdOut.write(code, W);
         }
 
+        // System.err.println compress: Writing EOF code " + EOF_CODE + " (width " + W + ")");
         BinaryStdOut.write(EOF_CODE, W);
         BinaryStdOut.close();
+    }
+
+    /**
+     * Find the least recently used code (excluding alphabet and EOF)
+     */
+    private static int findLRU(Map<Integer, Long> lastUsed, int alphabetSize, int eofCode) {
+        int lruCode = -1;
+        long oldestTime = Long.MAX_VALUE;
+
+        for (Map.Entry<Integer, Long> entry : lastUsed.entrySet()) {
+            int code = entry.getKey();
+            if (code >= alphabetSize && code != eofCode) {
+                if (entry.getValue() < oldestTime) {
+                    oldestTime = entry.getValue();
+                    lruCode = code;
+                }
+            }
+        }
+
+        return lruCode;
+    }
+
+    /**
+     * Find the least frequently used code (excluding alphabet and EOF)
+     */
+    private static int findLFU(Map<Integer, Integer> useCount, int alphabetSize, int eofCode) {
+        int lfuCode = -1;
+        int minCount = Integer.MAX_VALUE;
+
+        for (Map.Entry<Integer, Integer> entry : useCount.entrySet()) {
+            int code = entry.getKey();
+            if (code >= alphabetSize && code != eofCode) {
+                if (entry.getValue() < minCount) {
+                    minCount = entry.getValue();
+                    lfuCode = code;
+                }
+            }
+        }
+
+        return lfuCode;
     }
 
     /**
@@ -309,6 +454,10 @@ public class LZWTool {
         int maxCode = 1 << h.maxW;
 
         String[] decodingTable = new String[maxCode];
+        Map<Integer, Long> lastUsed = new HashMap<>();
+        Map<Integer, Integer> useCount = new HashMap<>();
+        long timestamp = 0;
+
         for (int i = 0; i < alphabetSize; i++) {
             decodingTable[i] = h.alphabet.get(i);
         }
@@ -317,24 +466,32 @@ public class LZWTool {
         int nextCode = alphabetSize + 1;
         int W = h.minW;
 
+        // System.err.println expand: EOF_CODE=" + EOF_CODE + ", nextCode=" + nextCode + ", W=" + W + ", maxCode=" + maxCode);
+
         if (BinaryStdIn.isEmpty()) {
+            // System.err.println expand: Input is empty, returning");
             BinaryStdOut.close();
             return;
         }
 
+        // System.err.println expand: Reading first code with W=" + W);
         int prevCode = BinaryStdIn.readInt(W);
+        // System.err.println expand: Read prevCode=" + prevCode);
         if (prevCode == EOF_CODE) {
+            // System.err.println expand: First code is EOF, returning");
             BinaryStdOut.close();
             return;
         }
 
         String val = decodingTable[prevCode];
+        // System.err.println expand: Outputting val=\"" + val + "\"");
         BinaryStdOut.write(val);
 
-        while (!BinaryStdIn.isEmpty()) {
-            if (nextCode >= (1 << W) && W < h.maxW)
-                W++;
+        // Track usage
+        lastUsed.put(prevCode, timestamp++);
+        useCount.put(prevCode, useCount.getOrDefault(prevCode, 0) + 1);
 
+        while (!BinaryStdIn.isEmpty()) {
             int codeword = BinaryStdIn.readInt(W);
             if (codeword == EOF_CODE)
                 break;
@@ -345,8 +502,58 @@ public class LZWTool {
 
             BinaryStdOut.write(s);
 
-            if (nextCode < maxCode)
+            // Track usage
+            lastUsed.put(codeword, timestamp++);
+            useCount.put(codeword, useCount.getOrDefault(codeword, 0) + 1);
+
+            if (nextCode < maxCode) {
+                // Increase W if needed BEFORE adding the new code
+                if (nextCode >= (1 << W) && W < h.maxW)
+                    W++;
                 decodingTable[nextCode++] = val + s.charAt(0);
+            } else {
+                // Codebook is full, apply policy
+                // System.err.println expand: Codebook full (nextCode=" + nextCode + ", maxCode=" + maxCode + "), applying policy: " + h.policy);
+                switch (h.policy) {
+                    case "reset":
+                        // Reset codebook to alphabet only
+                        // System.err.println expand: Resetting codebook to alphabet");
+                        decodingTable = new String[maxCode];
+                        for (int i = 0; i < alphabetSize; i++) {
+                            decodingTable[i] = h.alphabet.get(i);
+                        }
+                        lastUsed.clear();
+                        useCount.clear();
+                        nextCode = alphabetSize + 1;
+                        W = h.minW;
+                        break;
+
+                    case "lru":
+                        // Evict least recently used entry
+                        int lruCode = findLRU(lastUsed, alphabetSize, EOF_CODE);
+                        if (lruCode != -1) {
+                            decodingTable[lruCode] = val + s.charAt(0);
+                            lastUsed.remove(lruCode);
+                            useCount.remove(lruCode);
+                        }
+                        break;
+
+                    case "lfu":
+                        // Evict least frequently used entry
+                        int lfuCode = findLFU(useCount, alphabetSize, EOF_CODE);
+                        if (lfuCode != -1) {
+                            decodingTable[lfuCode] = val + s.charAt(0);
+                            lastUsed.remove(lfuCode);
+                            useCount.remove(lfuCode);
+                        }
+                        break;
+
+                    case "freeze":
+                    default:
+                        // Do nothing - stop adding new codes
+                        break;
+                }
+            }
 
             val = s;
         }
