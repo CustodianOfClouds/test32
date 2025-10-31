@@ -171,11 +171,29 @@ public class LZWTool {
 
         TSTmod<Integer> codebook = new TSTmod<>();
         int nextCode = 0;
+        int alphabetSize = alphabet.size();
+
+        // Initialize codebook with alphabet
         for (String symbol : alphabet) {
             codebook.put(new StringBuilder(symbol), nextCode++);
         }
 
         int EOF_CODE = nextCode++;
+
+        // Check policy once and store as boolean for fast checking in hot loop
+        boolean resetPolicy = policy.equals("reset");
+        int RESET_CODE = resetPolicy ? nextCode++ : -1;
+        int initialNextCode = nextCode;
+
+        // Pre-create alphabet StringBuilders ONLY for reset policy to reuse during resets
+        StringBuilder[] alphabetKeys = null;
+        if (resetPolicy) {
+            alphabetKeys = new StringBuilder[alphabetSize];
+            for (int i = 0; i < alphabetSize; i++) {
+                alphabetKeys[i] = new StringBuilder(alphabet.get(i));
+            }
+        }
+
         int W = minW;
         int maxCode = 1 << maxW;
 
@@ -207,7 +225,30 @@ public class LZWTool {
                         W++;
 
                     codebook.put(next, nextCode++);
+                } else if (resetPolicy) {
+                    // Codebook is full, reset it
+                    // First, check if we need to increase W to write RESET_CODE
+                    if (nextCode >= (1 << W) && W < maxW)
+                        W++;
+
+                    // Write the RESET marker
+                    BinaryStdOut.write(RESET_CODE, W);
+
+                    // Reinitialize the codebook with alphabet
+                    // Reuse pre-created alphabet StringBuilders to reduce allocations
+                    codebook = new TSTmod<>();
+                    for (int i = 0; i < alphabetSize; i++) {
+                        codebook.put(alphabetKeys[i], i);
+                    }
+
+                    // Reset state
+                    nextCode = initialNextCode;
+                    W = minW;
+
+                    // Don't add the pattern yet - it will be added in future iterations
+                    // as we continue processing from the current character
                 }
+                // else freeze - do nothing
 
                 StringBuilder charCheck = new StringBuilder().append(c);
                 if (!codebook.contains(charCheck)) {
@@ -235,6 +276,7 @@ public class LZWTool {
         Header h = readHeader();
         int alphabetSize = h.alphabet.size();
         int maxCode = 1 << h.maxW;
+        boolean resetPolicy = (h.policy == 1);
 
         String[] decodingTable = new String[maxCode];
         for (int i = 0; i < alphabetSize; i++) {
@@ -242,7 +284,9 @@ public class LZWTool {
         }
 
         int EOF_CODE = alphabetSize;
-        int nextCode = alphabetSize + 1;
+        int RESET_CODE = resetPolicy ? alphabetSize + 1 : -1;
+        int initialNextCode = resetPolicy ? alphabetSize + 2 : alphabetSize + 1;
+        int nextCode = initialNextCode;
         int W = h.minW;
 
         if (BinaryStdIn.isEmpty()) {
@@ -267,6 +311,29 @@ public class LZWTool {
             if (codeword == EOF_CODE)
                 break;
 
+            if (resetPolicy && codeword == RESET_CODE) {
+                // Reset the decoding table by clearing entries after alphabet
+                // Reuse the array instead of allocating a new one
+                for (int i = alphabetSize; i < decodingTable.length; i++) {
+                    decodingTable[i] = null;
+                }
+
+                // Reset state
+                nextCode = initialNextCode;
+                W = h.minW;
+
+                // Read the next code after reset at minW
+                // The main loop will handle W increases as patterns are added
+                codeword = BinaryStdIn.readInt(W);
+
+                if (codeword == EOF_CODE)
+                    break;
+
+                val = decodingTable[codeword];
+                BinaryStdOut.write(val);
+                continue;
+            }
+
             String s = decodingTable[codeword];
             if (s == null) {
                 s = val + val.charAt(0);
@@ -282,3 +349,4 @@ public class LZWTool {
         BinaryStdOut.close();
     }
 }
+
