@@ -238,7 +238,7 @@ public class LZWTool {
 
                 // Track frequency for LFU
                 if (lfuPolicy) {
-                    frequency.put(outputCode, frequency.get(outputCode) + 1);
+                    frequency.put(outputCode, frequency.getOrDefault(outputCode, 0) + 1);
                 }
 
                 if (nextCode < maxCode) {
@@ -279,7 +279,7 @@ public class LZWTool {
                     int lfuCode = -1;
                     int minFreq = Integer.MAX_VALUE;
                     for (int code = alphabetSize + 1; code < nextCode; code++) {
-                        int freq = frequency.get(code);
+                        int freq = frequency.getOrDefault(code, 0);
                         if (freq < minFreq) {
                             minFreq = freq;
                             lfuCode = code;
@@ -418,7 +418,9 @@ public class LZWTool {
 
             if (nextCode < maxCode) {
                 decodingTable[nextCode] = val + s.charAt(0);
-                if (lfuPolicy) {
+                if (lfuPolicy && codeword != nextCode) {
+                    // Only initialize frequency for truly new codes
+                    // When codeword == nextCode (special case), frequency was already set above
                     frequency.put(nextCode, 0);
                 }
                 nextCode++;
