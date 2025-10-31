@@ -270,10 +270,14 @@ public class LZWTool {
             if (codebook.contains(next)) {
                 current = next;
             } else {
+                System.err.println("DEBUG compress: Writing code " + codebook.get(current) + " with W=" + W + ", nextCode=" + nextCode);
                 BinaryStdOut.write(codebook.get(current), W);
 
                 if (nextCode < maxCode) {
-                    if (nextCode >= (1 << W) && W < maxW) W++;
+                    if (nextCode >= (1 << W) && W < maxW) {
+                        System.err.println("DEBUG compress: Incrementing W from " + W + " to " + (W+1) + " because nextCode=" + nextCode + " >= " + (1<<W));
+                        W++;
+                    }
                     codebook.put(next, nextCode++);
                 }
 
@@ -288,9 +292,11 @@ public class LZWTool {
         }
 
         if (current.length() > 0) {
+            System.err.println("DEBUG compress: Writing final code " + codebook.get(current) + " with W=" + W);
             BinaryStdOut.write(codebook.get(current), W);
         }
 
+        System.err.println("DEBUG compress: Writing EOF_CODE " + EOF_CODE + " with W=" + W);
         BinaryStdOut.write(EOF_CODE, W);
         BinaryStdOut.close();
     }
@@ -327,17 +333,29 @@ public class LZWTool {
         BinaryStdOut.write(val);
 
         while (!BinaryStdIn.isEmpty()) {
-            if (nextCode >= (1 << W) && W < h.maxW) W++;
+            System.err.println("DEBUG expand loop: nextCode=" + nextCode + ", W=" + W + ", (1<<W)=" + (1<<W));
+            if (nextCode >= (1 << W) && W < h.maxW) {
+                System.err.println("DEBUG: Incrementing W from " + W + " to " + (W+1));
+                W++;
+            }
 
+            System.err.println("DEBUG: About to read codeword with W=" + W);
             int codeword = BinaryStdIn.readInt(W);
+            System.err.println("DEBUG: Read codeword=" + codeword + ", EOF_CODE=" + EOF_CODE);
             if (codeword == EOF_CODE) break;
 
             String s = decodingTable[codeword];
-            if (s == null) s = val + val.charAt(0);
+            if (s == null) {
+                System.err.println("DEBUG: codeword " + codeword + " not in table, using special case");
+                s = val + val.charAt(0);
+            }
 
             BinaryStdOut.write(s);
 
-            if (nextCode < maxCode) decodingTable[nextCode++] = val + s.charAt(0);
+            if (nextCode < maxCode) {
+                System.err.println("DEBUG: Adding decodingTable[" + nextCode + "]");
+                decodingTable[nextCode++] = val + s.charAt(0);
+            }
 
             val = s;
         }
