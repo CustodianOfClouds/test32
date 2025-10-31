@@ -65,7 +65,7 @@ public class LZWTool {
         List<String> alphabet = new ArrayList<>();
         Set<String> seen = new LinkedHashSet<>();
 
-        try (FileReader fr = new FileReader(path)) {
+        try (InputStreamReader fr = new InputStreamReader(new FileInputStream(path), "UTF-8")) {
             StringBuilder lineBuffer = new StringBuilder();
             int c;
 
