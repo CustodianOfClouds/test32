@@ -3,11 +3,13 @@ import java.util.*;
 
 /**
  * LZWTool is a configurable LZW compression and expansion utility.
- * Supports variable codeword widths and multiple codebook eviction policies (freeze, reset, LRU, LFU).
+ * Supports variable codeword widths and multiple codebook eviction policies
+ * (freeze, reset, LRU, LFU).
  * 
  * === note ===
  * Compress:
- * java LZWTool --mode compress --minW 9 --maxW 16 --policy lru --alphabet alphabets/ascii.txt < input > output
+ * java LZWTool --mode compress --minW 9 --maxW 16 --policy lru --alphabet
+ * alphabets/ascii.txt < input > output
  * Expand:
  * java LZWTool --mode expand < output > restored
  */
@@ -158,6 +160,8 @@ public class LZWTool {
      * @param alphabet list of symbols in the alphabet
      */
     private static void writeHeader(int minW, int maxW, String policy, List<String> alphabet) {
+        // System.err.println("DEBUG writeHeader: minW=" + minW + ", maxW=" + maxW + ",
+        // policy=" + policy + ", alphabet.size=" + alphabet.size());
         BinaryStdOut.write(minW, 8);
         BinaryStdOut.write(maxW, 8);
 
@@ -179,12 +183,14 @@ public class LZWTool {
                 policyCode = 0;
                 break;
         }
+        // System.err.println("DEBUG writeHeader: policyCode=" + policyCode);
         BinaryStdOut.write(policyCode, 8);
         BinaryStdOut.write(alphabet.size(), 16);
 
         for (String symbol : alphabet) {
             BinaryStdOut.write(symbol.length() > 0 ? symbol.charAt(0) : 0, 8);
         }
+        // System.err.println("DEBUG writeHeader: Finished writing header");
     }
 
     /**
@@ -203,14 +209,24 @@ public class LZWTool {
      */
     private static Header readHeader() {
         Header h = new Header();
+        // System.err.println("DEBUG readHeader: Starting to read header");
         h.minW = BinaryStdIn.readInt(8);
+        // System.err.println("DEBUG readHeader: minW=" + h.minW);
         h.maxW = BinaryStdIn.readInt(8);
+        // System.err.println("DEBUG readHeader: maxW=" + h.maxW);
+
+        // Read policy code (even though we don't use it in expand)
+        int policyCode = BinaryStdIn.readInt(8);
+        // System.err.println("DEBUG readHeader: policyCode=" + policyCode);
 
         int alphabetSize = BinaryStdIn.readInt(16);
+        // System.err.println("DEBUG readHeader: alphabetSize=" + alphabetSize);
         h.alphabet = new ArrayList<>();
         for (int i = 0; i < alphabetSize; i++) {
             h.alphabet.add(String.valueOf(BinaryStdIn.readChar(8)));
         }
+        // System.err.println("DEBUG readHeader: Finished reading header, alphabet has "
+        // + h.alphabet.size() + " symbols");
         return h;
     }
 
@@ -261,7 +277,8 @@ public class LZWTool {
                 BinaryStdOut.write(codebook.get(current), W);
 
                 if (nextCode < maxCode) {
-                    if (nextCode >= (1 << W) && W < maxW) W++;
+                    if (nextCode >= (1 << W) && W < maxW)
+                        W++;
                     codebook.put(next, nextCode++);
                 }
 
@@ -315,17 +332,21 @@ public class LZWTool {
         BinaryStdOut.write(val);
 
         while (!BinaryStdIn.isEmpty()) {
-            if (nextCode >= (1 << W) && W < h.maxW) W++;
+            if (nextCode >= (1 << W) && W < h.maxW)
+                W++;
 
             int codeword = BinaryStdIn.readInt(W);
-            if (codeword == EOF_CODE) break;
+            if (codeword == EOF_CODE)
+                break;
 
             String s = decodingTable[codeword];
-            if (s == null) s = val + val.charAt(0);
+            if (s == null)
+                s = val + val.charAt(0);
 
             BinaryStdOut.write(s);
 
-            if (nextCode < maxCode) decodingTable[nextCode++] = val + s.charAt(0);
+            if (nextCode < maxCode)
+                decodingTable[nextCode++] = val + s.charAt(0);
 
             val = s;
         }
