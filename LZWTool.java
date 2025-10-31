@@ -173,8 +173,11 @@ public class LZWTool {
         int nextCode = 0;
         int alphabetSize = alphabet.size();
 
-        for (String symbol : alphabet) {
-            codebook.put(new StringBuilder(symbol), nextCode++);
+        // Pre-create alphabet StringBuilders for reuse during resets
+        StringBuilder[] alphabetKeys = new StringBuilder[alphabetSize];
+        for (int i = 0; i < alphabetSize; i++) {
+            alphabetKeys[i] = new StringBuilder(alphabet.get(i));
+            codebook.put(alphabetKeys[i], nextCode++);
         }
 
         int EOF_CODE = nextCode++;
@@ -221,11 +224,11 @@ public class LZWTool {
                     // Write the RESET marker
                     BinaryStdOut.write(RESET_CODE, W);
 
-                    // Reinitialize the codebook with alphabet
-                    codebook = new TSTmod<>();
-                    int code = 0;
-                    for (String symbol : alphabet) {
-                        codebook.put(new StringBuilder(symbol), code++);
+                    // Clear and reinitialize the codebook with alphabet
+                    // Reuse existing TSTmod and pre-created alphabet keys
+                    codebook.clear();
+                    for (int i = 0; i < alphabetSize; i++) {
+                        codebook.put(alphabetKeys[i], i);
                     }
 
                     // Reset state
@@ -299,10 +302,10 @@ public class LZWTool {
                 break;
 
             if (resetPolicy && codeword == RESET_CODE) {
-                // Reset the decoding table
-                decodingTable = new String[maxCode];
-                for (int i = 0; i < alphabetSize; i++) {
-                    decodingTable[i] = h.alphabet.get(i);
+                // Reset the decoding table by clearing entries after alphabet
+                // Reuse the array instead of allocating a new one
+                for (int i = alphabetSize; i < decodingTable.length; i++) {
+                    decodingTable[i] = null;
                 }
 
                 // Reset state
