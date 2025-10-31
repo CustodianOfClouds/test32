@@ -207,6 +207,15 @@ public class LZWTool {
                         W++;
 
                     codebook.put(next, nextCode++);
+                } else if (policy.equals("reset") && nextCode == maxCode) {
+                    // Reset the codebook when maxCode is reached
+                    codebook = new TSTmod<>();
+                    nextCode = 0;
+                    for (String symbol : alphabet) {
+                        codebook.put(new StringBuilder(symbol), nextCode++);
+                    }
+                    nextCode++; // Skip EOF_CODE
+                    W = minW;
                 }
 
                 StringBuilder charCheck = new StringBuilder().append(c);
@@ -235,6 +244,7 @@ public class LZWTool {
         Header h = readHeader();
         int alphabetSize = h.alphabet.size();
         int maxCode = 1 << h.maxW;
+        String policyName = h.policy == 1 ? "reset" : "freeze";
 
         String[] decodingTable = new String[maxCode];
         for (int i = 0; i < alphabetSize; i++) {
@@ -273,8 +283,18 @@ public class LZWTool {
             }
 
             BinaryStdOut.write(s);
-            if (nextCode < maxCode)
+
+            if (nextCode < maxCode) {
                 decodingTable[nextCode++] = val + s.charAt(0);
+            } else if (policyName.equals("reset") && nextCode == maxCode) {
+                // Reset the decoding table when maxCode is reached
+                decodingTable = new String[maxCode];
+                for (int i = 0; i < alphabetSize; i++) {
+                    decodingTable[i] = h.alphabet.get(i);
+                }
+                nextCode = alphabetSize + 1;
+                W = h.minW;
+            }
 
             val = s;
         }
