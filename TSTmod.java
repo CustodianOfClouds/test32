@@ -73,15 +73,7 @@ public class TSTmod<Value> {
     public TSTmod() {
     }
 
-    /**
-     * Clears all entries from the symbol table.
-     * This is more efficient than creating a new TSTmod when reusing the same structure.
-     */
-    public void clear() {
-        root = null;
-        n = 0;
-    }
-
+  
     /**
      * Does this symbol table contain the given key?
      * @param key the key
