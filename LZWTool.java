@@ -65,12 +65,27 @@ public class LZWTool {
         List<String> alphabet = new ArrayList<>();
         Set<String> seen = new LinkedHashSet<>();
 
-        try (FileReader fr = new FileReader(path)) {
+        try (InputStreamReader fr = new InputStreamReader(new FileInputStream(path), "UTF-8")) {
             StringBuilder lineBuffer = new StringBuilder();
             int c;
+            boolean hasCRLF = false;
+            boolean checkedLineEnding = false;
 
             while ((c = fr.read()) != -1) {
                 if (c == '\n') {
+                    // Check for CRLF on first occurrence
+                    if (!checkedLineEnding) {
+                        if (lineBuffer.length() > 0 && lineBuffer.charAt(lineBuffer.length() - 1) == '\r') {
+                            hasCRLF = true;
+                        }
+                        checkedLineEnding = true;
+                    }
+
+                    // Strip trailing \r only if file uses CRLF line endings
+                    if (hasCRLF && lineBuffer.length() > 0 && lineBuffer.charAt(lineBuffer.length() - 1) == '\r') {
+                        lineBuffer.setLength(lineBuffer.length() - 1);
+                    }
+
                     String symbol = (lineBuffer.length() == 0) ? "\n" : String.valueOf(lineBuffer.charAt(0));
                     if (!seen.contains(symbol)) {
                         seen.add(symbol);
@@ -82,7 +97,11 @@ public class LZWTool {
                 }
             }
 
+            // Handle last line if file doesn't end with newline
             if (lineBuffer.length() > 0) {
+                if (hasCRLF && lineBuffer.charAt(lineBuffer.length() - 1) == '\r') {
+                    lineBuffer.setLength(lineBuffer.length() - 1);
+                }
                 String symbol = String.valueOf(lineBuffer.charAt(0));
                 if (!seen.contains(symbol)) {
                     seen.add(symbol);
