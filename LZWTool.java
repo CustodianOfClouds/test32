@@ -173,16 +173,26 @@ public class LZWTool {
         int nextCode = 0;
         int alphabetSize = alphabet.size();
 
-        // Pre-create alphabet StringBuilders for reuse during resets
-        StringBuilder[] alphabetKeys = new StringBuilder[alphabetSize];
-        for (int i = 0; i < alphabetSize; i++) {
-            alphabetKeys[i] = new StringBuilder(alphabet.get(i));
-            codebook.put(alphabetKeys[i], nextCode++);
+        // Initialize codebook with alphabet
+        for (String symbol : alphabet) {
+            codebook.put(new StringBuilder(symbol), nextCode++);
         }
 
         int EOF_CODE = nextCode++;
-        int RESET_CODE = policy.equals("reset") ? nextCode++ : -1;
+
+        // Check policy once and store as boolean for fast checking in hot loop
+        boolean resetPolicy = policy.equals("reset");
+        int RESET_CODE = resetPolicy ? nextCode++ : -1;
         int initialNextCode = nextCode;
+
+        // Pre-create alphabet StringBuilders ONLY for reset policy to reuse during resets
+        StringBuilder[] alphabetKeys = null;
+        if (resetPolicy) {
+            alphabetKeys = new StringBuilder[alphabetSize];
+            for (int i = 0; i < alphabetSize; i++) {
+                alphabetKeys[i] = new StringBuilder(alphabet.get(i));
+            }
+        }
 
         int W = minW;
         int maxCode = 1 << maxW;
@@ -215,7 +225,7 @@ public class LZWTool {
                         W++;
 
                     codebook.put(next, nextCode++);
-                } else if (policy.equals("reset")) {
+                } else if (resetPolicy) {
                     // Codebook is full, reset it
                     // First, check if we need to increase W to write RESET_CODE
                     if (nextCode >= (1 << W) && W < maxW)
