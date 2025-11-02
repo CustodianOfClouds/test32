@@ -1,0 +1,14 @@
+# Compiled Java class files
+*.class
+
+# Test artifacts
+*.lzw
+*_restored.txt
+*_debug.txt
+
+# Temporary test files created during development
+CheckAlphabet.java
+TestWidthIssue.java
+test_*.txt
+tiny_test.txt
+trace_test.txt
