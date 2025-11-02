@@ -32,6 +32,16 @@ public class LZWTool {
         }
     }
 
+    private static void validateAlphabetSize(int alphabetSize, int minW) {
+        // why do we need EOF? because W isn't a multiple of 8, so ending has padding and fucks up decompression
+        // We need minW to be large enough to represent alphabet, EOF (at +1), and RESET_CODE (at +2)
+        int requiredBits = (int) Math.ceil(Math.log(alphabetSize + 2) / Math.log(2));
+        if (minW < requiredBits) {
+            System.err.println("Error: minW=" + minW + " is too small for alphabet size " + alphabetSize + ". Need at least " + requiredBits + " bits to represent alphabet + EOF");
+            System.exit(1);
+        }
+    }
+
     private static void parseArguments(String[] args) {
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
@@ -72,6 +82,8 @@ public class LZWTool {
                 System.exit(1);
             }
             
+            //validateAlphabetSize(alphabet.size(), minW);
+
             // we pipe raw binary data in during compress
             compress(minW, maxW, policy, alphabet);
 
@@ -167,6 +179,10 @@ public class LZWTool {
             dictionary.put(new StringBuilder(String.valueOf(symbol)), nextCode++);
         }
 
+        // Reserve nextCode for EOF, so actual codes start at nextCode + 1
+        int EOF_CODE = nextCode;
+        nextCode++; // Skip EOF code
+
         // now let's start compressing!
         // raw binary data is piped in during actual execution, so we start reading from BinaryStdIn
 
@@ -208,6 +224,12 @@ public class LZWTool {
 
                 // log into dictionary, if space available
                 if (nextCode < maxCode) {
+
+                    // Check if width needs to increase BEFORE adding new entry
+                    if (nextCode >= (1 << W) && W < maxW) {
+                        W++;
+                    }
+
                     // There's space in the dictionary - add new pattern
                     dictionary.put(next, nextCode++);
                     
@@ -217,11 +239,6 @@ public class LZWTool {
                     //} else if (policy.equals("lfu")) {
                     //    LFUMap.put(next.toString(), 0); // New entry, frequency 0
                     //}
-
-                    // Check if we need to increase codeword width
-                    if (nextCode == (1 << W) && W < maxW) {
-                        W++;
-                    }
 
                 } else {
                     // Dictionary full - handle according to policy
@@ -259,6 +276,8 @@ public class LZWTool {
             BinaryStdOut.write(dictionary.get(current), W);
         }
 
+        // Write EOF code to signal end of compressed data
+        BinaryStdOut.write(EOF_CODE, W);
         BinaryStdOut.close();
         
     }
@@ -271,13 +290,15 @@ public class LZWTool {
         int maxCode = 1 << h.maxW; 
         int W = h.minW;
 
-        int nextCode = h.alphabetSize; // Next available code index
+        int EOF_CODE = h.alphabetSize;
+        int nextCode = h.alphabetSize + 1; // Next available code index (skip EOF)
 
         // best data structure for decompression dictionary is an array
         String[] dictionary = new String[maxCode];
         for (int i = 0; i < h.alphabetSize; i++) {
             dictionary[i] = h.alphabet.get(i).toString();
         }
+        dictionary[EOF_CODE] = ""; // Reserve EOF code (unused but reserved)
 
         // now let's start reading the compressed data and decompressing
 
@@ -289,6 +310,11 @@ public class LZWTool {
 
         // handle first codeword
         int current = BinaryStdIn.readInt(W);
+        // Check if first code is EOF (empty file)
+        if (current == EOF_CODE) {
+            BinaryStdOut.close();
+            return;
+        }
         if (current < h.alphabetSize) { // should be in initial dictionary
             BinaryStdOut.write(dictionary[current]);
         } else {
@@ -297,9 +323,20 @@ public class LZWTool {
         }
         String valPrior = dictionary[current]; // need this for later building
 
-        while (!BinaryStdIn.isEmpty()) {
+        while (!BinaryStdIn.isEmpty()) { 
+
+            // Check if width needs to increase BEFORE reading next code
+            if (nextCode >= (1 << W) && W < h.maxW) {
+                W++;
+            }
             
             current = BinaryStdIn.readInt(W);
+
+            // Check for EOF code
+            if (current == EOF_CODE) {
+                break;
+            }
+
             String s = ""; // to hold the string for current entry
 
             if (current < nextCode) {
@@ -317,11 +354,31 @@ public class LZWTool {
     
             // Add new entry: previous string + first char of current string
             if (nextCode < maxCode) {
-
                 dictionary[nextCode++] = valPrior + s.charAt(0);
-
-                if (nextCode == (1 << W) && W < h.maxW) {
-                    W++;
+            } else {
+                // Dictionary full - handle according to policy
+                switch (h.policy) {
+                    case 0: // freeze
+                        // Do nothing - dictionary remains full
+                        break;
+                    //case 1: // reset
+                    //    // Reset dictionary to initial state
+                    //    dictionary = new String[maxCode];
+                    //    for (int i = 0; i < h.alphabetSize; i++) {
+                    //        dictionary[i] = h.alphabet.get(i).toString();
+                    //    }
+                    //    dictionary[EOF_CODE] = ""; // Reserve EOF code
+                    //    nextCode = h.alphabetSize + 1;
+                    //    W = h.minW; // Reset codeword width
+                    //    break;
+                    //case 2: // lru
+                    //    // Evict least recently used entry
+                    //    // (Implementation omitted for brevity)
+                    //    break;
+                    //case 3: // lfu
+                    //    // Evict least frequently used entry
+                    //    // (Implementation omitted for brevity)
+                    //    break;
                 }
             }
 
