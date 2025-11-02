@@ -218,14 +218,19 @@ public class LZWTool {
 
                 // Update LRU/LFU tracking structures 
 
-            } else { 
+            } else {
 
                 // Pattern not in codebook - output current and add new pattern
                 BinaryStdOut.write(dictionary.get(current), W);
 
-                // log into dictionary, if space available
+                // Add to dictionary if space available
                 if (nextCode < maxCode) {
-                    // There's space in the dictionary - add new pattern
+                    // Check if width needs to increase BEFORE adding new entry
+                    if (nextCode >= (1 << W) && W < maxW) {
+                        W++;
+                    }
+
+                    // Add new pattern
                     dictionary.put(next, nextCode++);
 
                     //// Update LRU/LFU tracking structures
@@ -234,11 +239,6 @@ public class LZWTool {
                     //} else if (policy.equals("lfu")) {
                     //    LFUMap.put(next.toString(), 0); // New entry, frequency 0
                     //}
-
-                    // Check if we need to increase codeword width
-                    if (nextCode == (1 << W) && W < maxW) {
-                        W++;
-                    }
 
                 } else {
                     // Dictionary full - handle according to policy
@@ -274,6 +274,11 @@ public class LZWTool {
         // Output final pattern if any
         if (current.length() > 0) {
             BinaryStdOut.write(dictionary.get(current), W);
+        }
+
+        // Check if width needs to increase before writing EOF
+        if (nextCode >= (1 << W) && W < maxW) {
+            W++;
         }
 
         // Write EOF code to signal end of compressed data
@@ -319,15 +324,19 @@ public class LZWTool {
             return;
         }
 
-        if (current < h.alphabetSize) { // should be in initial dictionary
+        if (current < h.alphabetSize) {
             BinaryStdOut.write(dictionary[current]);
         } else {
             System.err.println("Bad compressed code: " + current);
             System.exit(1);
         }
-        String valPrior = dictionary[current]; // need this for later building
+        String val = dictionary[current];
 
-        while (true) {
+        while (!BinaryStdIn.isEmpty()) {
+            // Check if width needs to increase BEFORE reading next code
+            if (nextCode >= (1 << W) && W < h.maxW) {
+                W++;
+            }
 
             current = BinaryStdIn.readInt(W);
 
@@ -336,36 +345,23 @@ public class LZWTool {
                 break;
             }
 
-            String s = ""; // to hold the string for current entry
-
-            if (current < nextCode) {
-                // Code is already in dictionary
-                s = dictionary[current];
-            } else if (current == nextCode) {
+            String s = dictionary[current];
+            if (s == null) {
                 // Special case: code not in dictionary yet (cScSc problem)
-                s = valPrior + valPrior.charAt(0);
-            } else {
-                System.err.println("Bad compressed code: " + current);
-                System.exit(1);
+                s = val + val.charAt(0);
             }
 
             BinaryStdOut.write(s);
 
             // Add new entry: previous string + first char of current string
             if (nextCode < maxCode) {
-
-                dictionary[nextCode++] = valPrior + s.charAt(0);
-
-                if (nextCode == (1 << W) && W < h.maxW) {
-                    W++;
-                }
+                dictionary[nextCode++] = val + s.charAt(0);
             } else {
                 // Dictionary is full - handle according to policy
                 // For freeze policy, do nothing (keep using existing codes)
             }
 
-            valPrior = s; // Update previous string for next iteration
-
+            val = s;
         }   
 
         BinaryStdOut.close();
