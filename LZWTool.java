@@ -576,8 +576,8 @@ public class LZWTool {
             }
             BinaryStdOut.write(s);
 
-            // One-step-behind: Move the PREVIOUS code BEFORE adding new entry
-            // This matches compression: moveToHead(output), then addToHead(new)
+            // One-step-behind: Move PREVIOUS code BEFORE adding new entry
+            // This happens for ALL cases including special case
             if (lruQueue != null) {
                 System.err.println("[EXPAND] Move PREVIOUS code=" + codePrior);
                 lruQueue.moveToHead(codePrior);
@@ -634,7 +634,7 @@ public class LZWTool {
             }
 
             valPrior = s;
-            codePrior = current; // Update for next iteration
+            codePrior = current; // Always update for next iteration
         }
 
         if (lruQueue != null) {

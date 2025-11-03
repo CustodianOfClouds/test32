@@ -1,0 +1,37 @@
+=== COMPRESSION DEBUG MODE ===
+Alphabet size: 4
+minW: 3, maxW: 3, maxCode: 8
+
+[COMPRESS] Output code=2 for "a" (W=3)
+[COMPRESS] Add to dictionary: "ab" -> code=5
+  LRU ADD: code=5 key="ab"
+  LRU Queue after ADD: [5:"ab"]
+
+[COMPRESS] Output code=3 for "b" (W=3)
+[COMPRESS] Add to dictionary: "ba" -> code=6
+  LRU ADD: code=6 key="ba"
+  LRU Queue after ADD: [6:"ba", 5:"ab"]
+
+[COMPRESS] Output code=5 for "ab" (W=3)
+  LRU MOVE: code=5
+  LRU Queue after MOVE: [5:"ab", 6:"ba"]
+[COMPRESS] Add to dictionary: "aba" -> code=7
+  LRU ADD: code=7 key="aba"
+  LRU Queue after ADD: [7:"aba", 5:"ab", 6:"ba"]
+
+[COMPRESS] Output code=7 for "aba" (W=3)
+  LRU MOVE: code=7
+  LRU MOVE: already at head (no-op)
+[COMPRESS] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=6 key="ba"
+  LRU Queue after EVICT: [7:"aba", 5:"ab"]
+[COMPRESS] Evicted code=6 (was "ba")
+[COMPRESS] Reuse code=6 for "abab"
+  LRU ADD: code=6 key="abab"
+  LRU Queue after ADD: [6:"abab", 7:"aba", 5:"ab"]
+
+[COMPRESS] Output FINAL code=3 for "b" (W=3)
+
+[COMPRESS] Output EOF code=4 (W=3)
+=== COMPRESSION COMPLETE ===
+

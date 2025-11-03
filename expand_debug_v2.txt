@@ -1,0 +1,683 @@
+=== DECOMPRESSION DEBUG MODE ===
+Alphabet size: 4
+minW: 3, maxW: 3, maxCode: 8
+
+[EXPAND] Read FIRST code=2 (W=3)
+[EXPAND] Output "a"
+
+[EXPAND] Read code=3 (W=3, nextCode=5)
+[EXPAND] Code in dictionary: "b"
+[EXPAND] Output "b"
+[EXPAND] Add to dictionary: "ab" -> code=5
+  LRU ADD: code=5 key="ab"
+  LRU Queue after ADD: [5:"ab"]
+
+[EXPAND] Read code=5 (W=3, nextCode=6)
+[EXPAND] Code in dictionary: "ab"
+[EXPAND] Output "ab"
+[EXPAND] Add to dictionary: "ba" -> code=6
+  LRU ADD: code=6 key="ba"
+  LRU Queue after ADD: [6:"ba", 5:"ab"]
+  LRU MOVE: code=5
+  LRU Queue after MOVE: [5:"ab", 6:"ba"]
+
+[EXPAND] Read code=7 (W=3, nextCode=7)
+[EXPAND] Special case (code==nextCode): s = valPrior + valPrior[0] = "aba"
+[EXPAND] Output "aba"
+[EXPAND] Add to dictionary: "aba" -> code=7
+  LRU ADD: code=7 key="aba"
+  LRU Queue after ADD: [7:"aba", 5:"ab", 6:"ba"]
+  LRU MOVE: code=7
+  LRU MOVE: already at head (no-op)
+
+[EXPAND] Read code=3 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "b"
+[EXPAND] Output "b"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=6 key="ba"
+  LRU Queue after EVICT: [7:"aba", 5:"ab"]
+[EXPAND] Evicted code=6 (was "ba")
+[EXPAND] Reuse code=6 for "abab"
+  LRU ADD: code=6 key="abab"
+  LRU Queue after ADD: [6:"abab", 7:"aba", 5:"ab"]
+
+[EXPAND] Read code=2 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "a"
+[EXPAND] Output "a"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=5 key="ab"
+  LRU Queue after EVICT: [6:"abab", 7:"aba"]
+[EXPAND] Evicted code=5 (was "ab")
+[EXPAND] Reuse code=5 for "ba"
+  LRU ADD: code=5 key="ba"
+  LRU Queue after ADD: [5:"ba", 6:"abab", 7:"aba"]
+
+[EXPAND] Read code=5 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "ba"
+[EXPAND] Output "ba"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=7 key="aba"
+  LRU Queue after EVICT: [5:"ba", 6:"abab"]
+[EXPAND] Evicted code=7 (was "aba")
+[EXPAND] Reuse code=7 for "ab"
+  LRU ADD: code=7 key="ab"
+  LRU Queue after ADD: [7:"ab", 5:"ba", 6:"abab"]
+  LRU MOVE: code=5
+  LRU Queue after MOVE: [5:"ba", 7:"ab", 6:"abab"]
+
+[EXPAND] Read code=6 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "abab"
+[EXPAND] Output "abab"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=6 key="abab"
+  LRU Queue after EVICT: [5:"ba", 7:"ab"]
+[EXPAND] Evicted code=6 (was "abab")
+[EXPAND] Reuse code=6 for "baa"
+  LRU ADD: code=6 key="baa"
+  LRU Queue after ADD: [6:"baa", 5:"ba", 7:"ab"]
+  LRU MOVE: code=6
+  LRU MOVE: already at head (no-op)
+
+[EXPAND] Read code=2 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "a"
+[EXPAND] Output "a"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=7 key="ab"
+  LRU Queue after EVICT: [6:"baa", 5:"ba"]
+[EXPAND] Evicted code=7 (was "ab")
+[EXPAND] Reuse code=7 for "ababa"
+  LRU ADD: code=7 key="ababa"
+  LRU Queue after ADD: [7:"ababa", 6:"baa", 5:"ba"]
+
+[EXPAND] Read code=3 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "b"
+[EXPAND] Output "b"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=5 key="ba"
+  LRU Queue after EVICT: [7:"ababa", 6:"baa"]
+[EXPAND] Evicted code=5 (was "ba")
+[EXPAND] Reuse code=5 for "ab"
+  LRU ADD: code=5 key="ab"
+  LRU Queue after ADD: [5:"ab", 7:"ababa", 6:"baa"]
+
+[EXPAND] Read code=5 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "ab"
+[EXPAND] Output "ab"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=6 key="baa"
+  LRU Queue after EVICT: [5:"ab", 7:"ababa"]
+[EXPAND] Evicted code=6 (was "baa")
+[EXPAND] Reuse code=6 for "ba"
+  LRU ADD: code=6 key="ba"
+  LRU Queue after ADD: [6:"ba", 5:"ab", 7:"ababa"]
+  LRU MOVE: code=5
+  LRU Queue after MOVE: [5:"ab", 6:"ba", 7:"ababa"]
+
+[EXPAND] Read code=7 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "ababa"
+[EXPAND] Output "ababa"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=7 key="ababa"
+  LRU Queue after EVICT: [5:"ab", 6:"ba"]
+[EXPAND] Evicted code=7 (was "ababa")
+[EXPAND] Reuse code=7 for "aba"
+  LRU ADD: code=7 key="aba"
+  LRU Queue after ADD: [7:"aba", 5:"ab", 6:"ba"]
+  LRU MOVE: code=7
+  LRU MOVE: already at head (no-op)
+
+[EXPAND] Read code=3 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "b"
+[EXPAND] Output "b"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=6 key="ba"
+  LRU Queue after EVICT: [7:"aba", 5:"ab"]
+[EXPAND] Evicted code=6 (was "ba")
+[EXPAND] Reuse code=6 for "ababab"
+  LRU ADD: code=6 key="ababab"
+  LRU Queue after ADD: [6:"ababab", 7:"aba", 5:"ab"]
+
+[EXPAND] Read code=2 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "a"
+[EXPAND] Output "a"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=5 key="ab"
+  LRU Queue after EVICT: [6:"ababab", 7:"aba"]
+[EXPAND] Evicted code=5 (was "ab")
+[EXPAND] Reuse code=5 for "ba"
+  LRU ADD: code=5 key="ba"
+  LRU Queue after ADD: [5:"ba", 6:"ababab", 7:"aba"]
+
+[EXPAND] Read code=5 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "ba"
+[EXPAND] Output "ba"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=7 key="aba"
+  LRU Queue after EVICT: [5:"ba", 6:"ababab"]
+[EXPAND] Evicted code=7 (was "aba")
+[EXPAND] Reuse code=7 for "ab"
+  LRU ADD: code=7 key="ab"
+  LRU Queue after ADD: [7:"ab", 5:"ba", 6:"ababab"]
+  LRU MOVE: code=5
+  LRU Queue after MOVE: [5:"ba", 7:"ab", 6:"ababab"]
+
+[EXPAND] Read code=6 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "ababab"
+[EXPAND] Output "ababab"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=6 key="ababab"
+  LRU Queue after EVICT: [5:"ba", 7:"ab"]
+[EXPAND] Evicted code=6 (was "ababab")
+[EXPAND] Reuse code=6 for "baa"
+  LRU ADD: code=6 key="baa"
+  LRU Queue after ADD: [6:"baa", 5:"ba", 7:"ab"]
+  LRU MOVE: code=6
+  LRU MOVE: already at head (no-op)
+
+[EXPAND] Read code=2 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "a"
+[EXPAND] Output "a"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=7 key="ab"
+  LRU Queue after EVICT: [6:"baa", 5:"ba"]
+[EXPAND] Evicted code=7 (was "ab")
+[EXPAND] Reuse code=7 for "abababa"
+  LRU ADD: code=7 key="abababa"
+  LRU Queue after ADD: [7:"abababa", 6:"baa", 5:"ba"]
+
+[EXPAND] Read code=3 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "b"
+[EXPAND] Output "b"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=5 key="ba"
+  LRU Queue after EVICT: [7:"abababa", 6:"baa"]
+[EXPAND] Evicted code=5 (was "ba")
+[EXPAND] Reuse code=5 for "ab"
+  LRU ADD: code=5 key="ab"
+  LRU Queue after ADD: [5:"ab", 7:"abababa", 6:"baa"]
+
+[EXPAND] Read code=5 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "ab"
+[EXPAND] Output "ab"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=6 key="baa"
+  LRU Queue after EVICT: [5:"ab", 7:"abababa"]
+[EXPAND] Evicted code=6 (was "baa")
+[EXPAND] Reuse code=6 for "ba"
+  LRU ADD: code=6 key="ba"
+  LRU Queue after ADD: [6:"ba", 5:"ab", 7:"abababa"]
+  LRU MOVE: code=5
+  LRU Queue after MOVE: [5:"ab", 6:"ba", 7:"abababa"]
+
+[EXPAND] Read code=7 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "abababa"
+[EXPAND] Output "abababa"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=7 key="abababa"
+  LRU Queue after EVICT: [5:"ab", 6:"ba"]
+[EXPAND] Evicted code=7 (was "abababa")
+[EXPAND] Reuse code=7 for "aba"
+  LRU ADD: code=7 key="aba"
+  LRU Queue after ADD: [7:"aba", 5:"ab", 6:"ba"]
+  LRU MOVE: code=7
+  LRU MOVE: already at head (no-op)
+
+[EXPAND] Read code=3 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "b"
+[EXPAND] Output "b"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=6 key="ba"
+  LRU Queue after EVICT: [7:"aba", 5:"ab"]
+[EXPAND] Evicted code=6 (was "ba")
+[EXPAND] Reuse code=6 for "abababab"
+  LRU ADD: code=6 key="abababab"
+  LRU Queue after ADD: [6:"abababab", 7:"aba", 5:"ab"]
+
+[EXPAND] Read code=2 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "a"
+[EXPAND] Output "a"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=5 key="ab"
+  LRU Queue after EVICT: [6:"abababab", 7:"aba"]
+[EXPAND] Evicted code=5 (was "ab")
+[EXPAND] Reuse code=5 for "ba"
+  LRU ADD: code=5 key="ba"
+  LRU Queue after ADD: [5:"ba", 6:"abababab", 7:"aba"]
+
+[EXPAND] Read code=5 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "ba"
+[EXPAND] Output "ba"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=7 key="aba"
+  LRU Queue after EVICT: [5:"ba", 6:"abababab"]
+[EXPAND] Evicted code=7 (was "aba")
+[EXPAND] Reuse code=7 for "ab"
+  LRU ADD: code=7 key="ab"
+  LRU Queue after ADD: [7:"ab", 5:"ba", 6:"abababab"]
+  LRU MOVE: code=5
+  LRU Queue after MOVE: [5:"ba", 7:"ab", 6:"abababab"]
+
+[EXPAND] Read code=6 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "abababab"
+[EXPAND] Output "abababab"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=6 key="abababab"
+  LRU Queue after EVICT: [5:"ba", 7:"ab"]
+[EXPAND] Evicted code=6 (was "abababab")
+[EXPAND] Reuse code=6 for "baa"
+  LRU ADD: code=6 key="baa"
+  LRU Queue after ADD: [6:"baa", 5:"ba", 7:"ab"]
+  LRU MOVE: code=6
+  LRU MOVE: already at head (no-op)
+
+[EXPAND] Read code=2 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "a"
+[EXPAND] Output "a"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=7 key="ab"
+  LRU Queue after EVICT: [6:"baa", 5:"ba"]
+[EXPAND] Evicted code=7 (was "ab")
+[EXPAND] Reuse code=7 for "ababababa"
+  LRU ADD: code=7 key="ababababa"
+  LRU Queue after ADD: [7:"ababababa", 6:"baa", 5:"ba"]
+
+[EXPAND] Read code=3 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "b"
+[EXPAND] Output "b"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=5 key="ba"
+  LRU Queue after EVICT: [7:"ababababa", 6:"baa"]
+[EXPAND] Evicted code=5 (was "ba")
+[EXPAND] Reuse code=5 for "ab"
+  LRU ADD: code=5 key="ab"
+  LRU Queue after ADD: [5:"ab", 7:"ababababa", 6:"baa"]
+
+[EXPAND] Read code=5 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "ab"
+[EXPAND] Output "ab"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=6 key="baa"
+  LRU Queue after EVICT: [5:"ab", 7:"ababababa"]
+[EXPAND] Evicted code=6 (was "baa")
+[EXPAND] Reuse code=6 for "ba"
+  LRU ADD: code=6 key="ba"
+  LRU Queue after ADD: [6:"ba", 5:"ab", 7:"ababababa"]
+  LRU MOVE: code=5
+  LRU Queue after MOVE: [5:"ab", 6:"ba", 7:"ababababa"]
+
+[EXPAND] Read code=7 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "ababababa"
+[EXPAND] Output "ababababa"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=7 key="ababababa"
+  LRU Queue after EVICT: [5:"ab", 6:"ba"]
+[EXPAND] Evicted code=7 (was "ababababa")
+[EXPAND] Reuse code=7 for "aba"
+  LRU ADD: code=7 key="aba"
+  LRU Queue after ADD: [7:"aba", 5:"ab", 6:"ba"]
+  LRU MOVE: code=7
+  LRU MOVE: already at head (no-op)
+
+[EXPAND] Read code=3 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "b"
+[EXPAND] Output "b"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=6 key="ba"
+  LRU Queue after EVICT: [7:"aba", 5:"ab"]
+[EXPAND] Evicted code=6 (was "ba")
+[EXPAND] Reuse code=6 for "ababababab"
+  LRU ADD: code=6 key="ababababab"
+  LRU Queue after ADD: [6:"ababababab", 7:"aba", 5:"ab"]
+
+[EXPAND] Read code=2 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "a"
+[EXPAND] Output "a"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=5 key="ab"
+  LRU Queue after EVICT: [6:"ababababab", 7:"aba"]
+[EXPAND] Evicted code=5 (was "ab")
+[EXPAND] Reuse code=5 for "ba"
+  LRU ADD: code=5 key="ba"
+  LRU Queue after ADD: [5:"ba", 6:"ababababab", 7:"aba"]
+
+[EXPAND] Read code=5 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "ba"
+[EXPAND] Output "ba"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=7 key="aba"
+  LRU Queue after EVICT: [5:"ba", 6:"ababababab"]
+[EXPAND] Evicted code=7 (was "aba")
+[EXPAND] Reuse code=7 for "ab"
+  LRU ADD: code=7 key="ab"
+  LRU Queue after ADD: [7:"ab", 5:"ba", 6:"ababababab"]
+  LRU MOVE: code=5
+  LRU Queue after MOVE: [5:"ba", 7:"ab", 6:"ababababab"]
+
+[EXPAND] Read code=6 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "ababababab"
+[EXPAND] Output "ababababab"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=6 key="ababababab"
+  LRU Queue after EVICT: [5:"ba", 7:"ab"]
+[EXPAND] Evicted code=6 (was "ababababab")
+[EXPAND] Reuse code=6 for "baa"
+  LRU ADD: code=6 key="baa"
+  LRU Queue after ADD: [6:"baa", 5:"ba", 7:"ab"]
+  LRU MOVE: code=6
+  LRU MOVE: already at head (no-op)
+
+[EXPAND] Read code=2 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "a"
+[EXPAND] Output "a"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=7 key="ab"
+  LRU Queue after EVICT: [6:"baa", 5:"ba"]
+[EXPAND] Evicted code=7 (was "ab")
+[EXPAND] Reuse code=7 for "abababababa"
+  LRU ADD: code=7 key="abababababa"
+  LRU Queue after ADD: [7:"abababababa", 6:"baa", 5:"ba"]
+
+[EXPAND] Read code=3 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "b"
+[EXPAND] Output "b"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=5 key="ba"
+  LRU Queue after EVICT: [7:"abababababa", 6:"baa"]
+[EXPAND] Evicted code=5 (was "ba")
+[EXPAND] Reuse code=5 for "ab"
+  LRU ADD: code=5 key="ab"
+  LRU Queue after ADD: [5:"ab", 7:"abababababa", 6:"baa"]
+
+[EXPAND] Read code=5 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "ab"
+[EXPAND] Output "ab"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=6 key="baa"
+  LRU Queue after EVICT: [5:"ab", 7:"abababababa"]
+[EXPAND] Evicted code=6 (was "baa")
+[EXPAND] Reuse code=6 for "ba"
+  LRU ADD: code=6 key="ba"
+  LRU Queue after ADD: [6:"ba", 5:"ab", 7:"abababababa"]
+  LRU MOVE: code=5
+  LRU Queue after MOVE: [5:"ab", 6:"ba", 7:"abababababa"]
+
+[EXPAND] Read code=7 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "abababababa"
+[EXPAND] Output "abababababa"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=7 key="abababababa"
+  LRU Queue after EVICT: [5:"ab", 6:"ba"]
+[EXPAND] Evicted code=7 (was "abababababa")
+[EXPAND] Reuse code=7 for "aba"
+  LRU ADD: code=7 key="aba"
+  LRU Queue after ADD: [7:"aba", 5:"ab", 6:"ba"]
+  LRU MOVE: code=7
+  LRU MOVE: already at head (no-op)
+
+[EXPAND] Read code=3 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "b"
+[EXPAND] Output "b"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=6 key="ba"
+  LRU Queue after EVICT: [7:"aba", 5:"ab"]
+[EXPAND] Evicted code=6 (was "ba")
+[EXPAND] Reuse code=6 for "abababababab"
+  LRU ADD: code=6 key="abababababab"
+  LRU Queue after ADD: [6:"abababababab", 7:"aba", 5:"ab"]
+
+[EXPAND] Read code=2 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "a"
+[EXPAND] Output "a"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=5 key="ab"
+  LRU Queue after EVICT: [6:"abababababab", 7:"aba"]
+[EXPAND] Evicted code=5 (was "ab")
+[EXPAND] Reuse code=5 for "ba"
+  LRU ADD: code=5 key="ba"
+  LRU Queue after ADD: [5:"ba", 6:"abababababab", 7:"aba"]
+
+[EXPAND] Read code=5 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "ba"
+[EXPAND] Output "ba"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=7 key="aba"
+  LRU Queue after EVICT: [5:"ba", 6:"abababababab"]
+[EXPAND] Evicted code=7 (was "aba")
+[EXPAND] Reuse code=7 for "ab"
+  LRU ADD: code=7 key="ab"
+  LRU Queue after ADD: [7:"ab", 5:"ba", 6:"abababababab"]
+  LRU MOVE: code=5
+  LRU Queue after MOVE: [5:"ba", 7:"ab", 6:"abababababab"]
+
+[EXPAND] Read code=6 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "abababababab"
+[EXPAND] Output "abababababab"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=6 key="abababababab"
+  LRU Queue after EVICT: [5:"ba", 7:"ab"]
+[EXPAND] Evicted code=6 (was "abababababab")
+[EXPAND] Reuse code=6 for "baa"
+  LRU ADD: code=6 key="baa"
+  LRU Queue after ADD: [6:"baa", 5:"ba", 7:"ab"]
+  LRU MOVE: code=6
+  LRU MOVE: already at head (no-op)
+
+[EXPAND] Read code=2 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "a"
+[EXPAND] Output "a"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=7 key="ab"
+  LRU Queue after EVICT: [6:"baa", 5:"ba"]
+[EXPAND] Evicted code=7 (was "ab")
+[EXPAND] Reuse code=7 for "ababababababa"
+  LRU ADD: code=7 key="ababababababa"
+  LRU Queue after ADD: [7:"ababababababa", 6:"baa", 5:"ba"]
+
+[EXPAND] Read code=3 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "b"
+[EXPAND] Output "b"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=5 key="ba"
+  LRU Queue after EVICT: [7:"ababababababa", 6:"baa"]
+[EXPAND] Evicted code=5 (was "ba")
+[EXPAND] Reuse code=5 for "ab"
+  LRU ADD: code=5 key="ab"
+  LRU Queue after ADD: [5:"ab", 7:"ababababababa", 6:"baa"]
+
+[EXPAND] Read code=5 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "ab"
+[EXPAND] Output "ab"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=6 key="baa"
+  LRU Queue after EVICT: [5:"ab", 7:"ababababababa"]
+[EXPAND] Evicted code=6 (was "baa")
+[EXPAND] Reuse code=6 for "ba"
+  LRU ADD: code=6 key="ba"
+  LRU Queue after ADD: [6:"ba", 5:"ab", 7:"ababababababa"]
+  LRU MOVE: code=5
+  LRU Queue after MOVE: [5:"ab", 6:"ba", 7:"ababababababa"]
+
+[EXPAND] Read code=7 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "ababababababa"
+[EXPAND] Output "ababababababa"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=7 key="ababababababa"
+  LRU Queue after EVICT: [5:"ab", 6:"ba"]
+[EXPAND] Evicted code=7 (was "ababababababa")
+[EXPAND] Reuse code=7 for "aba"
+  LRU ADD: code=7 key="aba"
+  LRU Queue after ADD: [7:"aba", 5:"ab", 6:"ba"]
+  LRU MOVE: code=7
+  LRU MOVE: already at head (no-op)
+
+[EXPAND] Read code=3 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "b"
+[EXPAND] Output "b"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=6 key="ba"
+  LRU Queue after EVICT: [7:"aba", 5:"ab"]
+[EXPAND] Evicted code=6 (was "ba")
+[EXPAND] Reuse code=6 for "ababababababab"
+  LRU ADD: code=6 key="ababababababab"
+  LRU Queue after ADD: [6:"ababababababab", 7:"aba", 5:"ab"]
+
+[EXPAND] Read code=2 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "a"
+[EXPAND] Output "a"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=5 key="ab"
+  LRU Queue after EVICT: [6:"ababababababab", 7:"aba"]
+[EXPAND] Evicted code=5 (was "ab")
+[EXPAND] Reuse code=5 for "ba"
+  LRU ADD: code=5 key="ba"
+  LRU Queue after ADD: [5:"ba", 6:"ababababababab", 7:"aba"]
+
+[EXPAND] Read code=5 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "ba"
+[EXPAND] Output "ba"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=7 key="aba"
+  LRU Queue after EVICT: [5:"ba", 6:"ababababababab"]
+[EXPAND] Evicted code=7 (was "aba")
+[EXPAND] Reuse code=7 for "ab"
+  LRU ADD: code=7 key="ab"
+  LRU Queue after ADD: [7:"ab", 5:"ba", 6:"ababababababab"]
+  LRU MOVE: code=5
+  LRU Queue after MOVE: [5:"ba", 7:"ab", 6:"ababababababab"]
+
+[EXPAND] Read code=6 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "ababababababab"
+[EXPAND] Output "ababababababab"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=6 key="ababababababab"
+  LRU Queue after EVICT: [5:"ba", 7:"ab"]
+[EXPAND] Evicted code=6 (was "ababababababab")
+[EXPAND] Reuse code=6 for "baa"
+  LRU ADD: code=6 key="baa"
+  LRU Queue after ADD: [6:"baa", 5:"ba", 7:"ab"]
+  LRU MOVE: code=6
+  LRU MOVE: already at head (no-op)
+
+[EXPAND] Read code=2 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "a"
+[EXPAND] Output "a"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=7 key="ab"
+  LRU Queue after EVICT: [6:"baa", 5:"ba"]
+[EXPAND] Evicted code=7 (was "ab")
+[EXPAND] Reuse code=7 for "abababababababa"
+  LRU ADD: code=7 key="abababababababa"
+  LRU Queue after ADD: [7:"abababababababa", 6:"baa", 5:"ba"]
+
+[EXPAND] Read code=3 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "b"
+[EXPAND] Output "b"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=5 key="ba"
+  LRU Queue after EVICT: [7:"abababababababa", 6:"baa"]
+[EXPAND] Evicted code=5 (was "ba")
+[EXPAND] Reuse code=5 for "ab"
+  LRU ADD: code=5 key="ab"
+  LRU Queue after ADD: [5:"ab", 7:"abababababababa", 6:"baa"]
+
+[EXPAND] Read code=5 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "ab"
+[EXPAND] Output "ab"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=6 key="baa"
+  LRU Queue after EVICT: [5:"ab", 7:"abababababababa"]
+[EXPAND] Evicted code=6 (was "baa")
+[EXPAND] Reuse code=6 for "ba"
+  LRU ADD: code=6 key="ba"
+  LRU Queue after ADD: [6:"ba", 5:"ab", 7:"abababababababa"]
+  LRU MOVE: code=5
+  LRU Queue after MOVE: [5:"ab", 6:"ba", 7:"abababababababa"]
+
+[EXPAND] Read code=7 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "abababababababa"
+[EXPAND] Output "abababababababa"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=7 key="abababababababa"
+  LRU Queue after EVICT: [5:"ab", 6:"ba"]
+[EXPAND] Evicted code=7 (was "abababababababa")
+[EXPAND] Reuse code=7 for "aba"
+  LRU ADD: code=7 key="aba"
+  LRU Queue after ADD: [7:"aba", 5:"ab", 6:"ba"]
+  LRU MOVE: code=7
+  LRU MOVE: already at head (no-op)
+
+[EXPAND] Read code=3 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "b"
+[EXPAND] Output "b"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=6 key="ba"
+  LRU Queue after EVICT: [7:"aba", 5:"ab"]
+[EXPAND] Evicted code=6 (was "ba")
+[EXPAND] Reuse code=6 for "abababababababab"
+  LRU ADD: code=6 key="abababababababab"
+  LRU Queue after ADD: [6:"abababababababab", 7:"aba", 5:"ab"]
+
+[EXPAND] Read code=2 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "a"
+[EXPAND] Output "a"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=5 key="ab"
+  LRU Queue after EVICT: [6:"abababababababab", 7:"aba"]
+[EXPAND] Evicted code=5 (was "ab")
+[EXPAND] Reuse code=5 for "ba"
+  LRU ADD: code=5 key="ba"
+  LRU Queue after ADD: [5:"ba", 6:"abababababababab", 7:"aba"]
+
+[EXPAND] Read code=5 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "ba"
+[EXPAND] Output "ba"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=7 key="aba"
+  LRU Queue after EVICT: [5:"ba", 6:"abababababababab"]
+[EXPAND] Evicted code=7 (was "aba")
+[EXPAND] Reuse code=7 for "ab"
+  LRU ADD: code=7 key="ab"
+  LRU Queue after ADD: [7:"ab", 5:"ba", 6:"abababababababab"]
+  LRU MOVE: code=5
+  LRU Queue after MOVE: [5:"ba", 7:"ab", 6:"abababababababab"]
+
+[EXPAND] Read code=6 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "abababababababab"
+[EXPAND] Output "abababababababab"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=6 key="abababababababab"
+  LRU Queue after EVICT: [5:"ba", 7:"ab"]
+[EXPAND] Evicted code=6 (was "abababababababab")
+[EXPAND] Reuse code=6 for "baa"
+  LRU ADD: code=6 key="baa"
+  LRU Queue after ADD: [6:"baa", 5:"ba", 7:"ab"]
+  LRU MOVE: code=6
+  LRU MOVE: already at head (no-op)
+
+[EXPAND] Read code=2 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "a"
+[EXPAND] Output "a"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=7 key="ab"
+  LRU Queue after EVICT: [6:"baa", 5:"ba"]
+[EXPAND] Evicted code=7 (was "ab")
+[EXPAND] Reuse code=7 for "ababababababababa"
+  LRU ADD: code=7 key="ababababababababa"
+  LRU Queue after ADD: [7:"ababababababababa", 6:"baa", 5:"ba"]
+
+[EXPAND] Read code=3 (W=3, nextCode=8)
+[EXPAND] Code in dictionary: "b"
+[EXPAND] Output "b"
+[EXPAND] Dictionary FULL, evicting LRU entry...
+  LRU EVICT: code=5 key="ba"
+  LRU Queue after EVICT: [7:"ababababababababa", 6:"baa"]
+[EXPAND] Evicted code=5 (was "ba")
+[EXPAND] Reuse code=5 for "ab"
+  LRU ADD: code=5 key="ab"
+  LRU Queue after ADD: [5:"ab", 7:"ababababababababa", 6:"baa"]
+
+[EXPAND] Read code=4 (W=3, nextCode=8)
+[EXPAND] EOF reached
+
+=== DECOMPRESSION COMPLETE ===
+
