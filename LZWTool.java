@@ -20,7 +20,6 @@ public class LZWTool {
     private static String policy = "freeze";
 
 
-
     // Path to the alphabet file for initializing the codebook
     private static String alphabetPath;
 
@@ -28,16 +27,6 @@ public class LZWTool {
     private static void validateCompressionArgs() {
         if (alphabetPath == null || minW > maxW) {
             System.err.println("Error: Invalid arguments for compression");
-            System.exit(1);
-        }
-    }
-
-    private static void validateAlphabetSize(int alphabetSize, int minW) {
-        // why do we need EOF? because W isn't a multiple of 8, so ending has padding and fucks up decompression
-        // We need minW to be large enough to represent alphabet, EOF (at +1), and RESET_CODE (at +2)
-        int requiredBits = (int) Math.ceil(Math.log(alphabetSize + 2) / Math.log(2));
-        if (minW < requiredBits) {
-            System.err.println("Error: minW=" + minW + " is too small for alphabet size " + alphabetSize + ". Need at least " + requiredBits + " bits to represent alphabet + EOF");
             System.exit(1);
         }
     }
@@ -81,8 +70,6 @@ public class LZWTool {
                 System.err.println("Error: Could not load alphabet from " + alphabetPath);
                 System.exit(1);
             }
-            
-            //validateAlphabetSize(alphabet.size(), minW);
 
             // we pipe raw binary data in during compress
             compress(minW, maxW, policy, alphabet);
@@ -165,13 +152,6 @@ public class LZWTool {
         int W = minW; // Current codeword width in bits
         int maxCode = 1 << maxW; // Maximum number of codes (2^maxW)
 
-        //// reset tracking structures
-        //int RESET_CODE = -1;
-
-        //// LRU/LFU tracking structures
-        //Map<String, Integer> LRUMap = new HashMap<>();
-        //Map<String, Integer> LFUMap = new HashMap<>();
-
         // create initial dictionary from alphabet
         // nextcode just tracks next available index that we can assign to new dictionary entries
         int nextCode = 0;
@@ -180,8 +160,19 @@ public class LZWTool {
         }
 
         // Reserve nextCode for EOF, so actual codes start at nextCode + 1
-        int EOF_CODE = nextCode;
-        nextCode++; // Skip EOF code
+        int EOF_CODE = nextCode++;// Skip EOF code
+
+        //=== Reset Policy Setup ===
+        int RESET_CODE = -1; // -1 unless reset is active then its nextCode + 2 after EOF
+        if (policy.equals("reset")) {
+            RESET_CODE = nextCode++;
+            // we note the initialnextcode is alphabet.size() + 1 
+            // eof is alphabet.size()
+        }
+
+        // LRU/LFU tracking structures
+        //Map<String, Integer> LRUMap = new HashMap<>();
+        //Map<String, Integer> LFUMap = new HashMap<>();
 
         // now let's start compressing!
         // raw binary data is piped in during actual execution, so we start reading from BinaryStdIn
@@ -246,15 +237,25 @@ public class LZWTool {
                         case "freeze":
                             // Do nothing - dictionary remains full
                             break;
-                        //case "reset":
-                        //    // Reset dictionary to initial state
-                        //    dictionary = new TSTmod<>();
-                        //    nextCode = 0;
-                        //    for (Character symbol : alphabet) {
-                        //        dictionary.put(new StringBuilder(String.valueOf(symbol)), nextCode++);
-                        //    }
-                        //    W = minW; // Reset codeword width
-                        //    break;
+                        case "reset":
+                            //First, check if W needs to increase before writing RESET_CODE
+                            // RESET_CODE is a regular codeword and follows same width rules
+                            if (nextCode >= (1 << W) && W < maxW) {
+                                W++;
+                            }
+
+                            BinaryStdOut.write(RESET_CODE, W);
+
+                            // reset nextcode and reinitialize dictionary
+                            dictionary = new TSTmod<>();
+                            nextCode = 0;
+                            for (Character symbol : alphabet) {
+                                dictionary.put(new StringBuilder(String.valueOf(symbol)), nextCode++);
+                            }
+                            // now set nextcode to be after eof and reset code
+                            nextCode+=2; // skip eof and reset code
+                            W = minW; // Reset codeword width
+                            break;
                         //case "lru":
                         //    // Evict least recently used entry
                         //    // (Implementation omitted for brevity)
@@ -263,6 +264,9 @@ public class LZWTool {
                         //    // Evict least frequently used entry
                         //    // (Implementation omitted for brevity)
                         //    break;
+                        default:
+                            // Unknown policy - treat as freeze
+                            break;
                     }
                 }
             
@@ -276,6 +280,11 @@ public class LZWTool {
             BinaryStdOut.write(dictionary.get(current), W);
         }
 
+        // idk why we need this check, but without it the code breaks so fuck it
+        if (nextCode >= (1 << W) && W < maxW) {
+            W++;
+        }
+        
         // Write EOF code to signal end of compressed data
         BinaryStdOut.write(EOF_CODE, W);
         BinaryStdOut.close();
@@ -292,13 +301,17 @@ public class LZWTool {
 
         int EOF_CODE = h.alphabetSize;
         int nextCode = h.alphabetSize + 1; // Next available code index (skip EOF)
+        int RESET_CODE = -1; // -1 for nonreset
+        if (h.policy == 1) {
+            RESET_CODE = h.alphabetSize + 1;
+            nextCode++; // skip resetcode   
+        }
 
         // best data structure for decompression dictionary is an array
         String[] dictionary = new String[maxCode];
         for (int i = 0; i < h.alphabetSize; i++) {
             dictionary[i] = h.alphabet.get(i).toString();
         }
-        dictionary[EOF_CODE] = ""; // Reserve EOF code (unused but reserved)
 
         // now let's start reading the compressed data and decompressing
 
@@ -315,6 +328,7 @@ public class LZWTool {
             BinaryStdOut.close();
             return;
         }
+
         if (current < h.alphabetSize) { // should be in initial dictionary
             BinaryStdOut.write(dictionary[current]);
         } else {
@@ -335,6 +349,34 @@ public class LZWTool {
             // Check for EOF code
             if (current == EOF_CODE) {
                 break;
+            }
+
+            if (h.policy == 1 && current == RESET_CODE) {
+                // Clear the decoding table by nulling entries after alphabet
+                // Reuse the existing array instead of allocating a new one
+                for (int i = h.alphabetSize; i < dictionary.length; i++) {
+                    dictionary[i] = null;
+                }
+
+                // Reset state variables back to initial values
+                nextCode = h.alphabetSize + 2; // skip EOF and RESET_CODE
+                W = h.minW;
+
+                // don't need to check width increase because we just reset to minW
+
+                // Read the next code after reset at minW width
+                // The loop will continue normal decompression from here
+                current = BinaryStdIn.readInt(W);
+
+                // Check if next code is EOF (edge case: reset right before end)
+                if (current == EOF_CODE) {
+                    break;
+                }
+                    
+                // Output the decoded string and continue
+                valPrior = dictionary[current];
+                BinaryStdOut.write(valPrior);
+                continue; // Skip pattern learning for this iteration
             }
 
             String s = ""; // to hold the string for current entry
@@ -361,16 +403,10 @@ public class LZWTool {
                     case 0: // freeze
                         // Do nothing - dictionary remains full
                         break;
-                    //case 1: // reset
-                    //    // Reset dictionary to initial state
-                    //    dictionary = new String[maxCode];
-                    //    for (int i = 0; i < h.alphabetSize; i++) {
-                    //        dictionary[i] = h.alphabet.get(i).toString();
-                    //    }
-                    //    dictionary[EOF_CODE] = ""; // Reserve EOF code
-                    //    nextCode = h.alphabetSize + 1;
-                    //    W = h.minW; // Reset codeword width
-                    //    break;
+                    case 1: // reset
+                        // reset is handled above when we read RESET_CODE
+                        break;
+
                     //case 2: // lru
                     //    // Evict least recently used entry
                     //    // (Implementation omitted for brevity)
@@ -379,6 +415,9 @@ public class LZWTool {
                     //    // Evict least frequently used entry
                     //    // (Implementation omitted for brevity)
                     //    break;
+                    default:
+                        // Unknown policy - treat as freeze
+                        break;
                 }
             }
 
