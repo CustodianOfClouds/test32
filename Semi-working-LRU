@@ -1,0 +1,559 @@
+import java.io.*;
+import java.util.*;
+
+public class LZWTool {
+
+    private static final boolean DEBUG = true; // Set to false to disable debug output
+
+    public static void main(String[] args) {
+        String mode = null;
+        int minW = 9, maxW = 16;
+        String policy = "freeze";
+        String alphabetPath = null;
+
+        // Parse CLI arguments
+        for (int i = 0; i < args.length; i++) {
+            switch (args[i]) {
+                case "--mode": mode = args[++i]; break;
+                case "--minW": minW = Integer.parseInt(args[++i]); break;
+                case "--maxW": maxW = Integer.parseInt(args[++i]); break;
+                case "--policy": policy = args[++i]; break;
+                case "--alphabet": alphabetPath = args[++i]; break;
+                default:
+                    System.err.println("Unknown argument: " + args[i]);
+                    System.exit(2);
+            }
+        }
+
+        // Validate args
+        if (mode == null) {
+            System.err.println("Error: --mode is required");
+            System.exit(1);
+        }
+
+        // Run chosen mode
+        if (mode.equals("compress")) {
+            if (alphabetPath == null || minW > maxW) {
+                System.err.println("Error: Invalid arguments");
+                System.exit(1);
+            }
+            List<String> alphabet = loadAlphabet(alphabetPath);
+            if (alphabet == null) {
+                System.err.println("Error: Could not load alphabet");
+                System.exit(1);
+            }
+            compress(minW, maxW, policy, alphabet);
+        } else if (mode.equals("expand")) {
+            expand();
+        } else {
+            System.err.println("Error: --mode must be 'compress' or 'expand'");
+            System.exit(1);
+        }
+    }
+
+    private static void debug(String msg) {
+        if (DEBUG) System.err.println("[DEBUG] " + msg);
+    }
+
+    // Load alphabet file, handle CR/LF, and ensure uniqueness
+    private static List<String> loadAlphabet(String path) {
+        List<String> alphabet = new ArrayList<>();
+        Set<String> seen = new LinkedHashSet<>();
+
+        try (FileReader fr = new FileReader(path)) {
+            StringBuilder lineBuffer = new StringBuilder();
+            int c;
+            while ((c = fr.read()) != -1) {
+                if (c == '\n') {
+                    if (lineBuffer.length() == 0) {
+                        // Empty line: add LF and CR
+                        if (seen.add("\n")) alphabet.add("\n");
+                        if (seen.add("\r")) alphabet.add("\r");
+                    } else {
+                        String symbol = String.valueOf(lineBuffer.charAt(0));
+                        if (seen.add(symbol)) alphabet.add(symbol);
+                    }
+                    lineBuffer.setLength(0);
+                } else lineBuffer.append((char)c);
+            }
+            // Handle End of File, last line
+            if (lineBuffer.length() > 0) {
+                String symbol = String.valueOf(lineBuffer.charAt(0));
+                if (seen.add(symbol)) alphabet.add(symbol);
+            }
+        } catch (IOException e) { return null; }
+
+        // Ensure LF/CR exist
+        if (seen.add("\n")) alphabet.add("\n");
+        if (seen.add("\r")) alphabet.add("\r");
+        
+        debug("Loaded alphabet with " + alphabet.size() + " symbols");
+        return alphabet;
+    }
+
+    // Write compression header
+    private static void writeHeader(int minW, int maxW, String policy, List<String> alphabet) {
+        debug("Writing header: minW=" + minW + ", maxW=" + maxW + ", policy=" + policy + ", alphabetSize=" + alphabet.size());
+        BinaryStdOut.write(minW, 8);
+        BinaryStdOut.write(maxW, 8);
+
+        int policyCode;
+        switch (policy) {
+            case "reset": policyCode = 1; break;
+            case "lru": policyCode = 2; break;
+            case "lfu": policyCode = 3; break;
+            default: policyCode = 0; break;
+        }
+        BinaryStdOut.write(policyCode, 8);
+        BinaryStdOut.write(alphabet.size(), 16);
+        for (String symbol : alphabet)
+            BinaryStdOut.write(symbol.charAt(0), 8);
+    }
+
+    // Header container
+    private static class Header {
+        int minW, maxW;
+        String policy;
+        List<String> alphabet;
+    }
+
+    // Read compression header
+    private static Header readHeader() {
+        Header h = new Header();
+        h.minW = BinaryStdIn.readInt(8);
+        h.maxW = BinaryStdIn.readInt(8);
+
+        int policyCode = BinaryStdIn.readInt(8);
+        switch (policyCode) {
+            case 1: h.policy = "reset"; break;
+            case 2: h.policy = "lru"; break;
+            case 3: h.policy = "lfu"; break;
+            default: h.policy = "freeze"; break;
+        }
+
+        int alphabetSize = BinaryStdIn.readInt(16);
+        h.alphabet = new ArrayList<>();
+        for (int i = 0; i < alphabetSize; i++)
+            h.alphabet.add(String.valueOf(BinaryStdIn.readChar(8)));
+        
+        debug("Read header: minW=" + h.minW + ", maxW=" + h.maxW + ", policy=" + h.policy + ", alphabetSize=" + alphabetSize);
+        return h;
+    }
+
+    // Optimized LRU tracking using a single counter and LinkedHashMap
+    private static class LRUTracker {
+        private final LinkedHashMap<String, Integer> map;
+        private int timestamp = 0;
+
+        LRUTracker(int capacity) {
+            this.map = new LinkedHashMap<>(capacity);
+            debug("LRUTracker initialized with capacity: " + capacity);
+        }
+
+        void use(String key) {
+            map.put(key, timestamp++);
+            debug("LRUTracker.use('" + escapeString(key) + "') timestamp=" + (timestamp-1) + ", mapSize=" + map.size());
+        }
+
+        String findLRU() {
+            String lruKey = null;
+            int minTimestamp = Integer.MAX_VALUE;
+            for (Map.Entry<String, Integer> entry : map.entrySet()) {
+                if (entry.getValue() < minTimestamp) {
+                    minTimestamp = entry.getValue();
+                    lruKey = entry.getKey();
+                }
+            }
+            debug("LRUTracker.findLRU() -> '" + escapeString(lruKey) + "' with timestamp=" + minTimestamp);
+            return lruKey;
+        }
+
+        void remove(String key) {
+            map.remove(key);
+            debug("LRUTracker.remove('" + escapeString(key) + "'), mapSize=" + map.size());
+        }
+
+        boolean contains(String key) {
+            return map.containsKey(key);
+        }
+
+        void printState() {
+            debug("LRUTracker state (size=" + map.size() + "):");
+            List<Map.Entry<String, Integer>> entries = new ArrayList<>(map.entrySet());
+            entries.sort(Map.Entry.comparingByValue());
+            for (Map.Entry<String, Integer> entry : entries) {
+                debug("  '" + escapeString(entry.getKey()) + "' -> timestamp=" + entry.getValue());
+            }
+        }
+    }
+
+    // Optimized LRU tracker for decoder (uses Integer keys)
+    private static class LRUTrackerDecoder {
+        private final Map<Integer, Integer> map;
+        private int timestamp = 0;
+
+        LRUTrackerDecoder(int capacity) {
+            this.map = new HashMap<>(capacity);
+            debug("LRUTrackerDecoder initialized with capacity: " + capacity);
+        }
+
+        void use(int code) {
+            map.put(code, timestamp++);
+            debug("LRUTrackerDecoder.use(code=" + code + ") timestamp=" + (timestamp-1) + ", mapSize=" + map.size());
+        }
+
+        int findLRU() {
+            int lruCode = -1;
+            int minTimestamp = Integer.MAX_VALUE;
+            for (Map.Entry<Integer, Integer> entry : map.entrySet()) {
+                if (entry.getValue() < minTimestamp) {
+                    minTimestamp = entry.getValue();
+                    lruCode = entry.getKey();
+                }
+            }
+            debug("LRUTrackerDecoder.findLRU() -> code=" + lruCode + " with timestamp=" + minTimestamp);
+            return lruCode;
+        }
+
+        void remove(int code) {
+            map.remove(code);
+            debug("LRUTrackerDecoder.remove(code=" + code + "), mapSize=" + map.size());
+        }
+
+        void printState() {
+            debug("LRUTrackerDecoder state (size=" + map.size() + "):");
+            List<Map.Entry<Integer, Integer>> entries = new ArrayList<>(map.entrySet());
+            entries.sort(Map.Entry.comparingByValue());
+            for (Map.Entry<Integer, Integer> entry : entries) {
+                debug("  code=" + entry.getKey() + " -> timestamp=" + entry.getValue());
+            }
+        }
+    }
+
+    private static String escapeString(String s) {
+        if (s == null) return "null";
+        return s.replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t");
+    }
+
+    // Compression
+    private static void compress(int minW, int maxW, String policy, List<String> alphabet) {
+        debug("\n=== STARTING COMPRESSION ===");
+        debug("Policy: " + policy + ", minW=" + minW + ", maxW=" + maxW);
+        
+        writeHeader(minW, maxW, policy, alphabet);
+
+        TSTmod<Integer> codebook = new TSTmod<>();
+        int nextCode = 0;
+        int alphabetSize = alphabet.size();
+
+        // Init dictionary
+        debug("\nInitializing codebook with alphabet:");
+        for (String symbol : alphabet) {
+            codebook.put(new StringBuilder(symbol), nextCode);
+            debug("  '" + escapeString(symbol) + "' -> code " + nextCode);
+            nextCode++;
+        }
+
+        int EndCode = nextCode++;
+        debug("EndCode = " + EndCode);
+        
+        boolean resetPolicy = policy.equals("reset");
+        boolean lruPolicy = policy.equals("lru");
+        int RESET_CODE = resetPolicy ? nextCode++ : -1;
+        int initialNextCode = nextCode;
+        
+        if (resetPolicy) debug("RESET_CODE = " + RESET_CODE);
+        debug("initialNextCode = " + initialNextCode);
+
+        // LRU tracker
+        LRUTracker lruTracker = lruPolicy ? new LRUTracker(1 << maxW) : null;
+
+        // Preload alphabet for reuse in reset mode
+        StringBuilder[] alphabetKeys = null;
+        if (resetPolicy) {
+            alphabetKeys = new StringBuilder[alphabetSize];
+            for (int i = 0; i < alphabetSize; i++)
+                alphabetKeys[i] = new StringBuilder(alphabet.get(i));
+        }
+
+        int W = minW;
+        int maxCode = (1 << maxW);
+        debug("maxCode = " + maxCode);
+
+        // Handle empty input
+        if (BinaryStdIn.isEmpty()) { 
+            debug("Input is empty, closing.");
+            BinaryStdOut.close(); 
+            return; 
+        }
+
+        char c = BinaryStdIn.readChar();
+        StringBuilder current = new StringBuilder().append(c);
+        debug("\nFirst character: '" + escapeString(String.valueOf(c)) + "'");
+
+        int step = 0;
+        // Main encoding loop
+        debug("\n=== ENCODING LOOP ===");
+        while (!BinaryStdIn.isEmpty()) {
+            c = BinaryStdIn.readChar();
+            StringBuilder next = new StringBuilder(current).append(c);
+            
+            step++;
+            debug("\n--- Step " + step + " ---");
+            debug("Read char: '" + escapeString(String.valueOf(c)) + "'");
+            debug("current = '" + escapeString(current.toString()) + "', next = '" + escapeString(next.toString()) + "'");
+
+            if (codebook.contains(next)) {
+                debug("Codebook CONTAINS '" + escapeString(next.toString()) + "' - extending current");
+                current = next;
+            } else {
+                Integer currentCode = codebook.get(current);
+                debug("Codebook does NOT contain '" + escapeString(next.toString()) + "'");
+                debug("OUTPUT: code=" + currentCode + " for '" + escapeString(current.toString()) + "' (W=" + W + " bits)");
+                BinaryStdOut.write(currentCode, W);
+
+                // Update LRU tracker for the used entry
+                if (lruPolicy) {
+                    String currentStr = current.toString();
+                    if (lruTracker.contains(currentStr)) {
+                        lruTracker.use(currentStr);
+                    }
+                }
+
+                // Add new entry if space remains or handle eviction/reset
+                if (nextCode < maxCode) {
+                    if (nextCode >= (1 << W) && W < maxW) {
+                        W++;
+                        debug("Increased W to " + W);
+                    }
+
+                    // LRU policy: evict if at capacity
+                    if (lruPolicy && nextCode == maxCode - 1) {
+                        debug("LRU: At capacity, need to evict");
+                        lruTracker.printState();
+                        String lruEntry = lruTracker.findLRU();
+                        if (lruEntry != null) {
+                            debug("EVICTING: '" + escapeString(lruEntry) + "'");
+                            codebook.put(new StringBuilder(lruEntry), null);
+                            lruTracker.remove(lruEntry);
+                        }
+                    }
+
+                    String nextStr = next.toString();
+                    debug("ADDING to codebook: '" + escapeString(nextStr) + "' -> code " + nextCode);
+                    codebook.put(next, nextCode++);
+
+                    // Track in LRU
+                    if (lruPolicy) {
+                        lruTracker.use(nextStr);
+                    }
+                } else if (resetPolicy) {
+                    debug("RESET policy: codebook full");
+                    // Handle reset
+                    if (nextCode >= (1 << W) && W < maxW) {
+                        W++;
+                        debug("Increased W to " + W);
+                    }
+                    debug("OUTPUT RESET_CODE: " + RESET_CODE + " (W=" + W + " bits)");
+                    BinaryStdOut.write(RESET_CODE, W);
+
+                    // Reset codebook
+                    debug("Resetting codebook to initial state");
+                    codebook = new TSTmod<>();
+                    for (int i = 0; i < alphabetSize; i++)
+                        codebook.put(alphabetKeys[i], i);
+
+                    nextCode = initialNextCode;
+                    W = minW;
+                    debug("Reset complete: nextCode=" + nextCode + ", W=" + W);
+                } else {
+                    debug("FREEZE policy: codebook full, no action");
+                }
+                current = new StringBuilder().append(c);
+                debug("current reset to: '" + escapeString(current.toString()) + "'");
+            }
+        }
+
+        // Output final code
+        debug("\n=== FINAL OUTPUT ===");
+        if (current.length() > 0) {
+            Integer finalCode = codebook.get(current);
+            debug("OUTPUT final: code=" + finalCode + " for '" + escapeString(current.toString()) + "' (W=" + W + " bits)");
+            BinaryStdOut.write(finalCode, W);
+
+            // Update LRU for final output
+            if (lruPolicy) {
+                String currentStr = current.toString();
+                if (lruTracker.contains(currentStr)) {
+                    lruTracker.use(currentStr);
+                }
+            }
+        }
+
+        // Write EndCode
+        if (nextCode >= (1 << W) && W < maxW) {
+            W++;
+            debug("Increased W to " + W + " for EndCode");
+        }
+        debug("OUTPUT EndCode: " + EndCode + " (W=" + W + " bits)");
+        BinaryStdOut.write(EndCode, W);
+        
+        if (lruPolicy) {
+            debug("\nFinal LRU state:");
+            lruTracker.printState();
+        }
+        
+        debug("\n=== COMPRESSION COMPLETE ===\n");
+        BinaryStdOut.close();
+    }
+
+    // Expansion
+    private static void expand() {
+        debug("\n=== STARTING DECOMPRESSION ===");
+        
+        Header h = readHeader();
+        int alphabetSize = h.alphabet.size();
+        int maxCode = (1 << h.maxW);
+        boolean resetPolicy = h.policy.equals("reset");
+        boolean lruPolicy = h.policy.equals("lru");
+
+        debug("maxCode = " + maxCode);
+
+        String[] decodingTable = new String[maxCode];
+        debug("\nInitializing decoding table:");
+        for (int i = 0; i < alphabetSize; i++) {
+            decodingTable[i] = h.alphabet.get(i);
+            debug("  code " + i + " -> '" + escapeString(decodingTable[i]) + "'");
+        }
+
+        // LRU tracker for decoder
+        LRUTrackerDecoder lruTracker = lruPolicy ? new LRUTrackerDecoder(maxCode) : null;
+
+        int EndCode = alphabetSize;
+        int RESET_CODE = resetPolicy ? alphabetSize + 1 : -1;
+        int initialNextCode = resetPolicy ? alphabetSize + 2 : alphabetSize + 1;
+        int nextCode = initialNextCode;
+        int W = h.minW;
+
+        debug("EndCode = " + EndCode);
+        if (resetPolicy) debug("RESET_CODE = " + RESET_CODE);
+        debug("initialNextCode = " + initialNextCode);
+
+        if (BinaryStdIn.isEmpty()) { 
+            debug("Input is empty, closing.");
+            BinaryStdOut.close(); 
+            return; 
+        }
+
+        int prevCode = BinaryStdIn.readInt(W);
+        debug("\nFirst codeword: " + prevCode + " (W=" + W + " bits)");
+        
+        if (prevCode == EndCode) {
+            debug("First code is EndCode, closing.");
+            BinaryStdOut.close(); 
+            return; 
+        }
+
+        String val = decodingTable[prevCode];
+        debug("Decoded: '" + escapeString(val) + "'");
+        debug("OUTPUT: '" + escapeString(val) + "'");
+        BinaryStdOut.write(val);
+
+        int step = 0;
+        // Main decoding loop
+        debug("\n=== DECODING LOOP ===");
+        while (!BinaryStdIn.isEmpty()) {
+            if (nextCode >= (1 << W) && W < h.maxW) {
+                W++;
+                debug("Increased W to " + W);
+            }
+
+            int codeword = BinaryStdIn.readInt(W);
+            step++;
+            debug("\n--- Step " + step + " ---");
+            debug("Read codeword: " + codeword + " (W=" + W + " bits)");
+            
+            if (codeword == EndCode) {
+                debug("Received EndCode, ending decompression");
+                break;
+            }
+
+            if (resetPolicy && codeword == RESET_CODE) {
+                debug("Received RESET_CODE, resetting decoding table");
+                // Reset decoding table
+                Arrays.fill(decodingTable, alphabetSize, decodingTable.length, null);
+
+                nextCode = initialNextCode;
+                W = h.minW;
+                debug("Reset complete: nextCode=" + nextCode + ", W=" + W);
+
+                // Restart after reset
+                codeword = BinaryStdIn.readInt(W);
+                debug("Read post-reset codeword: " + codeword + " (W=" + W + " bits)");
+                if (codeword == EndCode) {
+                    debug("Post-reset code is EndCode, ending");
+                    break;
+                }
+
+                val = decodingTable[codeword];
+                debug("Decoded: '" + escapeString(val) + "'");
+                debug("OUTPUT: '" + escapeString(val) + "'");
+                BinaryStdOut.write(val);
+                continue;
+            }
+
+            String s = decodingTable[codeword];
+            if (s == null) {
+                s = val + val.charAt(0);
+                debug("Codeword " + codeword + " not in table (special case): '" + escapeString(s) + "'");
+            } else {
+                debug("Codeword " + codeword + " -> '" + escapeString(s) + "'");
+            }
+
+            debug("OUTPUT: '" + escapeString(s) + "'");
+            BinaryStdOut.write(s);
+
+            // Update LRU tracker for the used code
+            if (lruPolicy && codeword >= alphabetSize + 1) {
+                lruTracker.use(codeword);
+            }
+
+            if (nextCode < maxCode) {
+                // LRU: evict if at capacity
+                if (lruPolicy && nextCode == maxCode - 1) {
+                    debug("LRU: At capacity, need to evict");
+                    lruTracker.printState();
+                    int lruCode = lruTracker.findLRU();
+                    if (lruCode != -1) {
+                        debug("EVICTING: code=" + lruCode + " (was '" + escapeString(decodingTable[lruCode]) + "')");
+                        decodingTable[lruCode] = null;
+                        lruTracker.remove(lruCode);
+                    }
+                }
+
+                String newEntry = val + s.charAt(0);
+                debug("ADDING to table: code " + nextCode + " -> '" + escapeString(newEntry) + "'");
+                decodingTable[nextCode] = newEntry;
+
+                // Track in LRU
+                if (lruPolicy) {
+                    lruTracker.use(nextCode);
+                }
+
+                nextCode++;
+            } else {
+                debug("Table full (nextCode=" + nextCode + " >= maxCode=" + maxCode + ")");
+            }
+
+            val = s;
+        }
+
+        if (lruPolicy) {
+            debug("\nFinal LRU state:");
+            lruTracker.printState();
+        }
+        
+        debug("\n=== DECOMPRESSION COMPLETE ===\n");
+        BinaryStdOut.close();
+    }
+}
