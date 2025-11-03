@@ -141,21 +141,67 @@ public class LZWTool {
     }
 
     /**
-     * Updates LRU tracking when a pattern is used.
-     * Assigns the current timestamp to the used pattern to mark it as most recently used.
-     * Only tracks patterns added to dictionary, not initial alphabet entries.
-     * Higher timestamp values indicate more recent usage.
-     * 
-     * @param LRUMap map tracking pattern -> timestamp
-     * @param usedPattern the pattern that was just used
-     * @param lruTimestamp current timestamp counter
-     * @return updated timestamp counter
+     * Helper method to increment ages of all entries in LRU map.
+     * This is called whenever we use an entry or add a new entry.
+     *
+     * @param LRUMap map tracking pattern -> age
      */
-    private static long updateLRUEncoder(Map<String, Long> LRUMap, String usedPattern, long lruTimestamp) {
-        if (LRUMap.containsKey(usedPattern)) {
-            LRUMap.put(usedPattern, lruTimestamp++);
+    private static void incrementAllAges(Map<String, Integer> LRUMap) {
+        for (String key : LRUMap.keySet()) {
+            LRUMap.put(key, LRUMap.get(key) + 1);
         }
-        return lruTimestamp;
+    }
+
+    /**
+     * Updates LRU tracking when a pattern is used (output during encoding).
+     * Sets the used pattern's age to 0 and increments all other ages.
+     * Only tracks patterns added to dictionary, not initial alphabet entries.
+     *
+     * @param LRUMap map tracking pattern -> age
+     * @param usedPattern the pattern that was just used/output
+     */
+    private static void updateLRUOnUse(Map<String, Integer> LRUMap, String usedPattern) {
+        // First increment all ages
+        incrementAllAges(LRUMap);
+        // Then set the used pattern to age 0
+        if (LRUMap.containsKey(usedPattern)) {
+            LRUMap.put(usedPattern, 0);
+        }
+    }
+
+    /**
+     * Updates LRU tracking when a new pattern is added to the dictionary.
+     * Increments all existing ages, then adds the new pattern with age 0.
+     *
+     * @param LRUMap map tracking pattern -> age
+     * @param newPattern the pattern being added
+     */
+    private static void updateLRUOnAdd(Map<String, Integer> LRUMap, String newPattern) {
+        // First increment all ages
+        incrementAllAges(LRUMap);
+        // Then add new pattern with age 0
+        LRUMap.put(newPattern, 0);
+    }
+
+    /**
+     * Finds and returns the least recently used (oldest) entry in the LRU map.
+     * Returns the string with the maximum age value.
+     *
+     * @param LRUMap map tracking pattern -> age
+     * @return the pattern string with the highest age (LRU entry)
+     */
+    private static String findLRUEntry(Map<String, Integer> LRUMap) {
+        String lruEntry = null;
+        int maxAge = -1;
+
+        for (Map.Entry<String, Integer> entry : LRUMap.entrySet()) {
+            if (entry.getValue() > maxAge) {
+                maxAge = entry.getValue();
+                lruEntry = entry.getKey();
+            }
+        }
+
+        return lruEntry;
     }
 
     private static void compress(int minW, int maxW, String policy, List<Character> alphabet) {
@@ -194,7 +240,9 @@ public class LZWTool {
         }
 
         // LRU/LFU tracking structures
-        Map<String, Integer> LRUMap = new HashMap<>();//??
+        // LRU: Map pattern string -> age (0 = most recently used, higher = older)
+        // Excludes alphabet entries (we never evict those)
+        Map<String, Integer> LRUMap = new HashMap<>();
         Map<String, Integer> LFUMap = new HashMap<>();
 
         // now let's start compressing!
@@ -229,14 +277,20 @@ public class LZWTool {
                 // Pattern exists - extend current pattern
                 current = next;
 
-            } else { 
+            } else {
 
                 // Pattern not in codebook - output current and add new pattern
                 BinaryStdOut.write(dictionary.get(current), W);
 
-                // Update LRU/LFU tracking structures here
-                // Update LRU tracking when outputting???
-
+                // Update LRU: mark output pattern as used (if it's in LRU map)
+                if (policy.equals("lru")) {
+                    String currentStr = current.toString();
+                    if (LRUMap.containsKey(currentStr)) {
+                        incrementAllAges(LRUMap);
+                        LRUMap.put(currentStr, 0);
+                        System.err.println("[ENCODE] Used pattern '" + currentStr + "' - age reset to 0");
+                    }
+                }
 
                 // log into dictionary, if space available
                 if (nextCode < maxCode) {
@@ -247,9 +301,15 @@ public class LZWTool {
                     }
 
                     // There's space in the dictionary - add new pattern
+                    String nextStr = next.toString();
                     dictionary.put(next, nextCode++);
-                    
-                    // Update LRU tracking structures??
+
+                    // Update LRU tracking: add new pattern with age 0, increment all others
+                    if (policy.equals("lru")) {
+                        updateLRUOnAdd(LRUMap, nextStr);
+                        System.err.println("[ENCODE] Added pattern '" + nextStr + "' with age 0, incremented all others");
+                        System.err.println("[ENCODE] LRU Map state: " + LRUMap);
+                    }
 
                 } else {
                     // Dictionary full - handle according to policy
@@ -279,10 +339,38 @@ public class LZWTool {
                             // now set nextcode to be after eof and reset code
                             nextCode+=2; // skip eof and reset code
                             W = minW; // Reset codeword width
+
+                            // Clear LRU tracking on reset
+                            LRUMap.clear();
                             break;
                         case "lru":
-                            // Find the least recently used entry (smallest timestamp)
-                            
+                            // Find the least recently used entry (highest age)
+                            String lruPattern = findLRUEntry(LRUMap);
+
+                            if (lruPattern != null) {
+                                System.err.println("[ENCODE] Dictionary full! Evicting LRU pattern: '" + lruPattern + "' with age " + LRUMap.get(lruPattern));
+
+                                // Get the code of the LRU entry before removing it
+                                StringBuilder lruBuilder = new StringBuilder(lruPattern);
+                                Integer evictedCode = dictionary.get(lruBuilder);
+
+                                // Remove the LRU entry from TST (put null to delete)
+                                dictionary.put(lruBuilder, null);
+
+                                // Remove from LRU tracking
+                                LRUMap.remove(lruPattern);
+
+                                // Now add the new pattern with the evicted code (reuse the slot)
+                                String nextStr = next.toString();
+
+                                dictionary.put(next, evictedCode);
+
+                                // Add new pattern to LRU tracking with age 0, increment all others
+                                updateLRUOnAdd(LRUMap, nextStr);
+
+                                System.err.println("[ENCODE] Added new pattern '" + nextStr + "' with reused code " + evictedCode);
+                                System.err.println("[ENCODE] LRU Map state: " + LRUMap);
+                            }
                             break;
                         //case "lfu":
                         //    // Evict least frequently used entry
@@ -332,7 +420,9 @@ public class LZWTool {
         }
 
         // LRU/LFU tracking structures
-        Map<Integer, Long> LRUMap = new HashMap<>();//??
+        // LRU: Map pattern string -> age (0 = most recently used, higher = older)
+        // Excludes alphabet entries (we never evict those)
+        Map<String, Integer> LRUMap = new HashMap<>();
         Map<String, Integer> LFUMap = new HashMap<>();
 
         // best data structure for decompression dictionary is an array
@@ -390,6 +480,9 @@ public class LZWTool {
                 nextCode = h.alphabetSize + 2; // skip EOF and RESET_CODE
                 W = h.minW;
 
+                // Clear LRU tracking on reset
+                LRUMap.clear();
+
                 // don't need to check width increase because we just reset to minW
 
                 // Read the next code after reset at minW width
@@ -400,7 +493,7 @@ public class LZWTool {
                 if (current == EOF_CODE) {
                     break;
                 }
-                    
+
                 // Output the decoded string and continue
                 valPrior = dictionary[current];
                 BinaryStdOut.write(valPrior);
@@ -428,13 +521,30 @@ public class LZWTool {
 
             BinaryStdOut.write(s);
 
+            // Update LRU: mark output pattern as used (if it's in LRU map)
+            if (h.policy == 2) { // LRU policy
+                if (LRUMap.containsKey(s)) {
+                    incrementAllAges(LRUMap);
+                    LRUMap.put(s, 0);
+                    System.err.println("[DECODE] Used pattern '" + s + "' (code " + current + ") - age reset to 0");
+                }
+            }
+
             // Add new entry: previous string + first char of current string
             // Use StringBuilder instead of string concatenation for efficiency
             if (nextCode < maxCode) {
                 // string concat: dictionary[nextCode++] = valPrior + s.charAt(0);
                 StringBuilder tempSb = new StringBuilder(valPrior.length() + 1);
                 tempSb.append(valPrior).append(s.charAt(0));
-                dictionary[nextCode++] = tempSb.toString();
+                String newEntry = tempSb.toString();
+                dictionary[nextCode++] = newEntry;
+
+                // Update LRU tracking for new entry
+                if (h.policy == 2) { // LRU policy
+                    updateLRUOnAdd(LRUMap, newEntry);
+                    System.err.println("[DECODE] Added pattern '" + newEntry + "' (code " + (nextCode - 1) + ") with age 0");
+                    System.err.println("[DECODE] LRU Map state: " + LRUMap);
+                }
             } else {
                 // Dictionary full - handle according to policy
                 switch (h.policy) {
@@ -447,9 +557,41 @@ public class LZWTool {
 
                     case 2: // lru
                         // Evict least recently used entry
-                        // Find LRU entry (smallest timestamp, excluding alphabet)
-                        // alphabet isnt added because we have an if statmemnt to repvent that
+                        // Find LRU entry (highest age, excluding alphabet)
+                        String lruPattern = findLRUEntry(LRUMap);
 
+                        if (lruPattern != null) {
+                            // Find the code for the LRU pattern
+                            int evictedCode = -1;
+                            for (int i = h.alphabetSize; i < nextCode; i++) {
+                                if (dictionary[i] != null && dictionary[i].equals(lruPattern)) {
+                                    evictedCode = i;
+                                    break;
+                                }
+                            }
+
+                            if (evictedCode != -1) {
+                                System.err.println("[DECODE] Dictionary full! Evicting LRU pattern: '" + lruPattern + "' (code " + evictedCode + ") with age " + LRUMap.get(lruPattern));
+
+                                // Remove from dictionary
+                                dictionary[evictedCode] = null;
+
+                                // Remove from LRU tracking
+                                LRUMap.remove(lruPattern);
+
+                                // Add new entry with the evicted code
+                                StringBuilder tempSb = new StringBuilder(valPrior.length() + 1);
+                                tempSb.append(valPrior).append(s.charAt(0));
+                                String newEntry = tempSb.toString();
+                                dictionary[evictedCode] = newEntry;
+
+                                // Add new pattern to LRU tracking with age 0, increment all others
+                                updateLRUOnAdd(LRUMap, newEntry);
+
+                                System.err.println("[DECODE] Added new pattern '" + newEntry + "' (code " + evictedCode + ") in place of evicted entry");
+                                System.err.println("[DECODE] LRU Map state: " + LRUMap);
+                            }
+                        }
                         break;
                     //case 3: // lfu
                     //    // Evict least frequently used entry
