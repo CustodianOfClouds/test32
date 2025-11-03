@@ -141,12 +141,15 @@ public class LZWTool {
     }
 
 
-    private static void compress(int minW, int maxW, String policy, List<Character> alphabet) { 
-        
+    private static void compress(int minW, int maxW, String policy, List<Character> alphabet) {
+
         writeHeader(minW, maxW, policy, alphabet);
 
         // compression dictionary stored in TST, String -> Code/Integer
         TSTmod<Integer> dictionary = new TSTmod<>();
+
+        // Create a fast lookup set for alphabet validation (avoids creating temporary StringBuilders)
+        Set<Character> alphabetSet = new HashSet<>(alphabet);
 
         // width tracking
         int W = minW; // Current codeword width in bits
@@ -155,8 +158,12 @@ public class LZWTool {
         // create initial dictionary from alphabet
         // nextcode just tracks next available index that we can assign to new dictionary entries
         int nextCode = 0;
+        // Reusable StringBuilder for initialization - avoids creating new StringBuilder for each symbol
+        StringBuilder sb = new StringBuilder(1);
         for (Character symbol : alphabet) {
-            dictionary.put(new StringBuilder(String.valueOf(symbol)), nextCode++);
+            sb.setLength(0);
+            sb.append(symbol);
+            dictionary.put(sb, nextCode++);
         }
 
         // Reserve nextCode for EOF, so actual codes start at nextCode + 1
@@ -185,18 +192,18 @@ public class LZWTool {
 
         // initialize the current pattern
         char c = BinaryStdIn.readChar();
-        StringBuilder current = new StringBuilder().append(c);
-        // Verify character is in alphabet
-        if (dictionary.get(current) == null) {
+        // Verify character is in alphabet using fast HashSet lookup (no StringBuilder allocation)
+        if (!alphabetSet.contains(c)) {
             System.err.println("Error: Input contains byte value " + (int) c + " which is not in the alphabet");
             System.exit(1);
         }
+        StringBuilder current = new StringBuilder().append(c);
 
         while (!BinaryStdIn.isEmpty()) {
-  
+
             c = BinaryStdIn.readChar();
-            // verify character is in alphabet
-            if (dictionary.get(new StringBuilder().append(c)) == null) {
+            // verify character is in alphabet using fast HashSet lookup (no StringBuilder allocation)
+            if (!alphabetSet.contains(c)) {
                 System.err.println("Error: Input contains byte value " + (int) c + " which is not in the alphabet");
                 System.exit(1);
             }
@@ -249,8 +256,12 @@ public class LZWTool {
                             // reset nextcode and reinitialize dictionary
                             dictionary = new TSTmod<>();
                             nextCode = 0;
+                            // Reuse StringBuilder for efficiency (avoid allocating for each symbol)
+                            sb.setLength(0);
                             for (Character symbol : alphabet) {
-                                dictionary.put(new StringBuilder(String.valueOf(symbol)), nextCode++);
+                                sb.setLength(0);
+                                sb.append(symbol);
+                                dictionary.put(sb, nextCode++);
                             }
                             // now set nextcode to be after eof and reset code
                             nextCode+=2; // skip eof and reset code
@@ -379,24 +390,33 @@ public class LZWTool {
                 continue; // Skip pattern learning for this iteration
             }
 
-            String s = ""; // to hold the string for current entry
+            // Declare string for current entry (initialized in branches below)
+            String s;
 
             if (current < nextCode) {
                 // Code is already in dictionary
                 s = dictionary[current];
             } else if (current == nextCode) {
                 // Special case: code not in dictionary yet (cScSc problem)
-                s = valPrior + valPrior.charAt(0);
+                // Use StringBuilder to avoid string concatenation overhead
+                StringBuilder tempSb = new StringBuilder(valPrior.length() + 1);
+                tempSb.append(valPrior).append(valPrior.charAt(0));
+                s = tempSb.toString();
             } else {
+                // Invalid code - should never reach write below
                 System.err.println("Bad compressed code: " + current);
                 System.exit(1);
+                return; // Unreachable but helps compiler
             }
 
             BinaryStdOut.write(s);
-    
+
             // Add new entry: previous string + first char of current string
+            // Use StringBuilder instead of string concatenation for efficiency
             if (nextCode < maxCode) {
-                dictionary[nextCode++] = valPrior + s.charAt(0);
+                StringBuilder tempSb = new StringBuilder(valPrior.length() + 1);
+                tempSb.append(valPrior).append(s.charAt(0));
+                dictionary[nextCode++] = tempSb.toString();
             } else {
                 // Dictionary full - handle according to policy
                 switch (h.policy) {
