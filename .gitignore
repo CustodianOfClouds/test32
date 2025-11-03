@@ -1,0 +1,16 @@
+# Compiled Java class files
+*.class
+
+# Test artifacts
+test_*.txt
+test_*.bin
+alphabet_ab.txt
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
