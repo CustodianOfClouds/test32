@@ -1,0 +1,13 @@
+# Compiled class files
+*.class
+
+# Test output and artifacts
+*.lzw
+test*_input.txt
+test*_output.txt
+test*_compressed.*
+test*.err
+*.log
+
+# Alphabet files (generated during tests)
+alphabet_*.txt
