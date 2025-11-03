@@ -567,11 +567,6 @@ public class LZWTool {
             debug("OUTPUT: '" + escapeString(s) + "'");
             BinaryStdOut.write(s);
 
-            // Update LRU tracker for the used code (only track non-alphabet codes)
-            if (lruPolicy && codeword >= alphabetSize + 1) {
-                lruTracker.use(codeword);
-            }
-
             if (nextCode < maxCode) {
                 // LRU: evict if at capacity BEFORE adding new entry
                 if (lruPolicy && nextCode == maxCode - 1) {
@@ -597,6 +592,11 @@ public class LZWTool {
                 nextCode++;
             } else {
                 debug("Table full (nextCode=" + nextCode + " >= maxCode=" + maxCode + ")");
+            }
+
+            // Update LRU tracker for the used code AFTER adding new entry (only track non-alphabet codes)
+            if (lruPolicy && codeword >= alphabetSize + 1) {
+                lruTracker.use(codeword);
             }
 
             valPrior = s;
