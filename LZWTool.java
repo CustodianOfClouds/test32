@@ -106,12 +106,6 @@ public class LZWTool {
             
             return lru;
         }
-        
-        // Clear all entries (for reset)
-        void clear() {
-            head = tail = null;
-            indirectionTable.clear();
-        }
     }
 
     // commandline args
@@ -440,10 +434,6 @@ public class LZWTool {
                     dictionary[i] = null;
                 }
 
-                if (lruQueue != null) {
-                    lruQueue.clear();
-                }
-
                 nextCode = h.alphabetSize + 2;
                 W = h.minW;
 
@@ -455,10 +445,7 @@ public class LZWTool {
                     
                 valPrior = dictionary[current];
                 BinaryStdOut.write(valPrior);
-                
-                if (lruQueue != null) {
-                    lruQueue.moveToHead(current);
-                }
+            
                 continue;
             }
 
