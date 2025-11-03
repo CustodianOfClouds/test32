@@ -140,21 +140,12 @@ public class LZWTool {
         return alphabet;
     }
 
-    // Debug flag - set to true to enable debug output
-    private static final boolean DEBUG = Boolean.getBoolean("lzw.debug");
-
-    private static void debug(String message) {
-        if (DEBUG) {
-            System.err.println("[DEBUG] " + message);
-        }
-    }
-
     /**
      * Updates LRU tracking when a pattern is used.
      * Assigns the current timestamp to the used pattern to mark it as most recently used.
      * Only tracks patterns added to dictionary, not initial alphabet entries.
      * Higher timestamp values indicate more recent usage.
-     *
+     * 
      * @param LRUMap map tracking pattern -> timestamp
      * @param usedPattern the pattern that was just used
      * @param lruTimestamp current timestamp counter
@@ -162,7 +153,6 @@ public class LZWTool {
      */
     private static long updateLRUEncoder(Map<String, Long> LRUMap, String usedPattern, long lruTimestamp) {
         if (LRUMap.containsKey(usedPattern)) {
-            debug("ENCODER: Updating LRU for pattern '" + usedPattern + "': timestamp " + lruTimestamp);
             LRUMap.put(usedPattern, lruTimestamp++);
         }
         return lruTimestamp;
@@ -245,8 +235,6 @@ public class LZWTool {
                 // Pattern not in codebook - output current and add new pattern
                 BinaryStdOut.write(dictionary.get(current), W);
 
-                // Note: LRU update for current must happen AFTER add/evict to match decoder timing
-
                 // log into dictionary, if space available
                 if (nextCode < maxCode) {
 
@@ -257,9 +245,13 @@ public class LZWTool {
 
                     // There's space in the dictionary - add new pattern
                     dictionary.put(next, nextCode++);
-
-                    // Note: Don't assign timestamp yet - new entries get timestamp when first used
-                    // This keeps encoder/decoder timestamps synchronized
+                    
+                    // Update LRU tracking structures - add new entry with age 0
+                    if (policy.equals("lru")) {
+                        LRUMap.put(next.toString(), lruTimestamp++);
+                    } //else if (policy.equals("lfu")) {
+                        //LFUMap.put(next.toString(), 0); // New entry, frequency 0
+                    //}
 
                 } else {
                     // Dictionary full - handle according to policy
@@ -294,28 +286,27 @@ public class LZWTool {
                             // Find the least recently used entry (smallest timestamp)
                             String lruPattern = null;
                             long oldestTimestamp = Long.MAX_VALUE;
-
+                            
                             for (Map.Entry<String, Long> entry : LRUMap.entrySet()) {
                                 if (entry.getValue() < oldestTimestamp) {
                                     oldestTimestamp = entry.getValue();
                                     lruPattern = entry.getKey();
                                 }
                             }
-
+                            
                             if (lruPattern != null) {
                                 // Save the code number before evicting
                                 Integer evictedCode = dictionary.get(new StringBuilder(lruPattern));
-                                debug("ENCODER: Dict full, evicting LRU pattern '" + lruPattern + "' (code " + evictedCode + ", timestamp " + oldestTimestamp + ")");
-                                debug("ENCODER: Adding new pattern '" + next + "' with code " + evictedCode);
-
+                                
                                 // Evict the LRU entry from dictionary and tracking map
                                 dictionary.put(new StringBuilder(lruPattern), null);
                                 LRUMap.remove(lruPattern);
-
+                                
                                 // Add new pattern using the evicted code number
                                 dictionary.put(next, evictedCode);
-
-                                // Note: Don't assign timestamp yet - will be assigned when first used
+                                
+                                // Add to LRU tracking with current timestamp
+                                LRUMap.put(next.toString(), lruTimestamp++);
                             }
                             break;
                         //case "lfu":
@@ -328,9 +319,7 @@ public class LZWTool {
                     }
                 }
 
-                // Update LRU tracking when outputting a code
-                // IMPORTANT: Must happen AFTER add/evict to match decoder timing
-                // This prevents the just-output code from avoiding eviction
+                // Update LRU tracking when outputting (AFTER add/evict to match decoder timing)
                 if (policy.equals("lru")) {
                     lruTimestamp = updateLRUEncoder(LRUMap, current.toString(), lruTimestamp);
                 }
@@ -480,8 +469,10 @@ public class LZWTool {
                 tempSb.append(valPrior).append(s.charAt(0));
                 dictionary[nextCode] = tempSb.toString();
 
-                // Note: Don't assign timestamp yet - new entries get timestamp when first used
-                // This keeps encoder/decoder timestamps synchronized
+                // Adding NEW entry to LRU tracking
+                if (h.policy == 2) {
+                    LRUMap.put(nextCode, lruTimestamp++);  // Add new entry
+                }
 
                 nextCode++;
 
@@ -501,25 +492,22 @@ public class LZWTool {
                         // alphabet isnt added because we have an if statmemnt to repvent that
                         int lruCode = -1;
                         long oldestTimestamp = Long.MAX_VALUE;
-
+                        
                         for (Map.Entry<Integer, Long> entry : LRUMap.entrySet()) {
                             if (entry.getValue() < oldestTimestamp) {
                                 oldestTimestamp = entry.getValue();
                                 lruCode = entry.getKey();
                             }
                         }
-
+                        
                         if (lruCode != -1) {
                             // Evict: overwrite that dictionary slot with new pattern
                             StringBuilder tempSb = new StringBuilder(valPrior.length() + 1);
                             tempSb.append(valPrior).append(s.charAt(0));
-                            String newPattern = tempSb.toString();
-                            debug("DECODER: Dict full, evicting LRU code " + lruCode + " ('" + dictionary[lruCode] + "', timestamp " + oldestTimestamp + ")");
-                            debug("DECODER: Adding new pattern '" + newPattern + "' with code " + lruCode);
-                            dictionary[lruCode] = newPattern;
-
-                            // Note: Don't assign timestamp yet - will be assigned when first used
-                            LRUMap.remove(lruCode);
+                            dictionary[lruCode] = tempSb.toString();
+                            
+                            // Update LRU tracking - keep same code, update timestamp
+                            LRUMap.put(lruCode, lruTimestamp++);
                         }
 
                         break;
@@ -533,18 +521,17 @@ public class LZWTool {
                 }
             }
 
-            // Update LRU for the code we just used (must happen AFTER adding new entry)
+            // NOW update LRU for the code we just used (after new entry is added)
             // This handles the cScSc case where current == nextCode-1
-            // IMPORTANT: This must be OUTSIDE the if-else block above to maintain sync with encoder
+            // CRITICAL FIX: Must be OUTSIDE if-else block so it executes even when dict is full
             if (h.policy == 2 && current >= h.alphabetSize) {
                 if (LRUMap.containsKey(current)) {
-                    debug("DECODER: Updating LRU for code " + current + " ('" + dictionary[current] + "'): timestamp " + lruTimestamp);
                     LRUMap.put(current, lruTimestamp++);
                 }
             }
 
             valPrior = s; // Update previous string for next iteration
-        }   
+        }
         BinaryStdOut.close();
     }
 
