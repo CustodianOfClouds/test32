@@ -9,5 +9,10 @@ test_compressed.lzw
 compress_debug.log
 expand_debug.log
 
+# Additional test generated files
+test_*.txt
+test_*.lzw
+*_debug.log
+
 # LZW compressed files
 *.lzw
