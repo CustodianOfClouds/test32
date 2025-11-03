@@ -96,7 +96,6 @@ public class LZWTool {
         } catch (IOException e) {
             return null;
         }
-
         return alphabet;
     }
 
@@ -112,10 +111,10 @@ public class LZWTool {
         TSTmod<Integer> dictionary = new TSTmod<>();
         int W = minW;
         int maxCode = 1 << maxW;
+
         Set<Character> alphabetSet = new HashSet<>(alphabet);
         int nextCode = 0;
         StringBuilder sb = new StringBuilder(1);
-
         for (Character symbol : alphabet) {
             sb.setLength(0);
             sb.append(symbol);
@@ -130,6 +129,7 @@ public class LZWTool {
 
         Map<String, Long> LRUMap = new HashMap<>();
         long lruTimestamp = 0;
+        Map<String, Integer> LFUMap = new HashMap<>();
 
         if (BinaryStdIn.isEmpty()) {
             BinaryStdOut.close();
@@ -155,7 +155,6 @@ public class LZWTool {
                 current = next;
             } else {
                 BinaryStdOut.write(dictionary.get(current), W);
-
                 if (policy.equals("lru")) {
                     lruTimestamp = updateLRUEncoder(LRUMap, current.toString(), lruTimestamp);
                 }
@@ -166,7 +165,6 @@ public class LZWTool {
                     }
 
                     dictionary.put(next, nextCode++);
-
                     if (policy.equals("lru")) {
                         LRUMap.put(next.toString(), lruTimestamp++);
                     }
@@ -194,12 +192,14 @@ public class LZWTool {
                         case "lru":
                             String lruPattern = null;
                             long oldestTimestamp = Long.MAX_VALUE;
+
                             for (Map.Entry<String, Long> entry : LRUMap.entrySet()) {
                                 if (entry.getValue() < oldestTimestamp) {
                                     oldestTimestamp = entry.getValue();
                                     lruPattern = entry.getKey();
                                 }
                             }
+
                             if (lruPattern != null) {
                                 Integer evictedCode = dictionary.get(new StringBuilder(lruPattern));
                                 dictionary.put(new StringBuilder(lruPattern), null);
@@ -208,10 +208,13 @@ public class LZWTool {
                                 LRUMap.put(next.toString(), lruTimestamp++);
                             }
                             break;
+                        case "lfu":
+                            break;
                         default:
                             break;
                     }
                 }
+
                 current = new StringBuilder().append(c);
             }
         }
@@ -219,7 +222,6 @@ public class LZWTool {
         if (current.length() > 0) {
             BinaryStdOut.write(dictionary.get(current), W);
         }
-
         if (nextCode >= (1 << W) && W < maxW) {
             W++;
         }
@@ -232,10 +234,10 @@ public class LZWTool {
         Header h = readHeader();
         int maxCode = 1 << h.maxW;
         int W = h.minW;
+
         int EOF_CODE = h.alphabetSize;
         int nextCode = h.alphabetSize + 1;
         int RESET_CODE = -1;
-
         if (h.policy == 1) {
             RESET_CODE = h.alphabetSize + 1;
             nextCode++;
@@ -243,6 +245,7 @@ public class LZWTool {
 
         Map<Integer, Long> LRUMap = new HashMap<>();
         long lruTimestamp = 0;
+        Map<String, Integer> LFUMap = new HashMap<>();
 
         String[] dictionary = new String[maxCode];
         for (int i = 0; i < h.alphabetSize; i++) {
@@ -266,7 +269,6 @@ public class LZWTool {
             System.err.println("Bad compressed code: " + current);
             System.exit(1);
         }
-
         String valPrior = dictionary[current];
 
         while (!BinaryStdIn.isEmpty()) {
@@ -294,7 +296,7 @@ public class LZWTool {
                 continue;
             }
 
-            String s;
+            String s = "";
             if (current < nextCode) {
                 s = dictionary[current];
             } else if (current == nextCode) {
@@ -304,7 +306,6 @@ public class LZWTool {
             } else {
                 System.err.println("Bad compressed code: " + current);
                 System.exit(1);
-                return;
             }
 
             BinaryStdOut.write(s);
@@ -335,18 +336,23 @@ public class LZWTool {
                     case 2:
                         int lruCode = -1;
                         long oldestTimestamp = Long.MAX_VALUE;
+
                         for (Map.Entry<Integer, Long> entry : LRUMap.entrySet()) {
                             if (entry.getValue() < oldestTimestamp) {
                                 oldestTimestamp = entry.getValue();
                                 lruCode = entry.getKey();
                             }
                         }
+
                         if (lruCode != -1) {
-                            StringBuilder tempSb = new StringBuilder(valPrior.length() + 1);
-                            tempSb.append(valPrior).append(s.charAt(0));
-                            dictionary[lruCode] = tempSb.toString();
+                            StringBuilder tempSb2 = new StringBuilder(valPrior.length() + 1);
+                            tempSb2.append(valPrior).append(s.charAt(0));
+                            dictionary[lruCode] = tempSb2.toString();
                             LRUMap.put(lruCode, lruTimestamp++);
                         }
+
+                        break;
+                    case 3:
                         break;
                     default:
                         break;
@@ -398,6 +404,7 @@ public class LZWTool {
 
     private static Header readHeader() {
         Header header = new Header();
+
         header.minW = BinaryStdIn.readInt(8);
         header.maxW = BinaryStdIn.readInt(8);
         header.policy = BinaryStdIn.readInt(8);
