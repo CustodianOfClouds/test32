@@ -217,7 +217,10 @@ public class LZWTool {
                 // Pattern not in codebook - output current and add new pattern
                 BinaryStdOut.write(dictionary.get(current), W);
 
-                // Update LRU/LFU tracking structures ?
+                // Update LRU tracking: set used entry to 0, increment all others by 1
+                if (policy.equals("lru")) {
+                    updateLRUOnUse(LRUMap, current.toString());
+                }
 
                 // log into dictionary, if space available
                 if (nextCode < maxCode) {
@@ -229,13 +232,11 @@ public class LZWTool {
 
                     // There's space in the dictionary - add new pattern
                     dictionary.put(next, nextCode++);
-                    
-                    //// Update LRU/LFU tracking structures 
-                    //if (policy.equals("lru")) {
-                    //    LRUMap.put(next.toString(), 0); // New entry, age 0
-                    //} else if (policy.equals("lfu")) {
-                    //    LFUMap.put(next.toString(), 0); // New entry, frequency 0
-                    //}
+
+                    // Add new entry to LRU map with timestamp 0 (don't increment others)
+                    if (policy.equals("lru")) {
+                        LRUMap.put(next.toString(), 0);
+                    }
 
                 } else {
                     // Dictionary full - handle according to policy
@@ -265,15 +266,22 @@ public class LZWTool {
                             // now set nextcode to be after eof and reset code
                             nextCode+=2; // skip eof and reset code
                             W = minW; // Reset codeword width
+
+                            // Clear LRU map if using LRU policy
+                            if (policy.equals("lru")) {
+                                LRUMap.clear();
+                            }
                             break;
-                        //case "lru":
-                        //    // Evict least recently used entry
-                        //    // (Implementation omitted for brevity)
-                        //    break;
-                        //case "lfu":
-                        //    // Evict least frequently used entry
-                        //    // (Implementation omitted for brevity)
-                        //    break;
+                        case "lru":
+                            // Evict least recently used entry and get the freed code
+                            int freedCode = evictLRU(LRUMap, dictionary);
+
+                            // Reuse the freed code for the new pattern (don't increment nextCode)
+                            if (freedCode != -1) {
+                                dictionary.put(next, freedCode);
+                                LRUMap.put(next.toString(), 0);
+                            }
+                            break;
                         default:
                             // Unknown policy - treat as freeze
                             break;
@@ -288,6 +296,11 @@ public class LZWTool {
         // Output final pattern if any
         if (current.length() > 0) {
             BinaryStdOut.write(dictionary.get(current), W);
+
+            // Update LRU tracking for final output
+            if (policy.equals("lru")) {
+                updateLRUOnUse(LRUMap, current.toString());
+            }
         }
 
         // idk why we need this check, but without it the code breaks so fuck it
@@ -351,6 +364,8 @@ public class LZWTool {
         }
         String valPrior = dictionary[current]; // need this for later building
 
+        // No LRU update for initial alphabet entries (they're never tracked)
+
         while (!BinaryStdIn.isEmpty()) { 
 
             // Check if width needs to increase BEFORE reading next code
@@ -376,6 +391,11 @@ public class LZWTool {
                 nextCode = h.alphabetSize + 2; // skip EOF and RESET_CODE
                 W = h.minW;
 
+                // Clear LRU map if using LRU policy
+                if (h.policy == 2) { // policy 2 = lru
+                    LRUMap.clear();
+                }
+
                 // don't need to check width increase because we just reset to minW
 
                 // Read the next code after reset at minW width
@@ -386,7 +406,7 @@ public class LZWTool {
                 if (current == EOF_CODE) {
                     break;
                 }
-                    
+
                 // Output the decoded string and continue
                 valPrior = dictionary[current];
                 BinaryStdOut.write(valPrior);
@@ -414,13 +434,24 @@ public class LZWTool {
 
             BinaryStdOut.write(s);
 
+            // Update LRU tracking when using an existing entry (only if it's not in initial alphabet)
+            if (h.policy == 2 && current >= h.alphabetSize) { // policy 2 = lru
+                updateLRUOnUse(LRUMap, s);
+            }
+
             // Add new entry: previous string + first char of current string
             // Use StringBuilder instead of string concatenation for efficiency
             if (nextCode < maxCode) {
                 // string concat: dictionary[nextCode++] = valPrior + s.charAt(0);
                 StringBuilder tempSb = new StringBuilder(valPrior.length() + 1);
                 tempSb.append(valPrior).append(s.charAt(0));
-                dictionary[nextCode++] = tempSb.toString();
+                String newEntry = tempSb.toString();
+                dictionary[nextCode++] = newEntry;
+
+                // Add to LRU map with timestamp 0
+                if (h.policy == 2) { // policy 2 = lru
+                    LRUMap.put(newEntry, 0);
+                }
             } else {
                 // Dictionary full - handle according to policy
                 switch (h.policy) {
@@ -430,15 +461,19 @@ public class LZWTool {
                     case 1: // reset
                         // reset is handled above when we read RESET_CODE
                         break;
+                    case 2: // lru
+                        // Evict least recently used entry and get freed index
+                        int freedIndex = evictLRUExpand(LRUMap, dictionary, h.alphabetSize);
 
-                    //case 2: // lru
-                    //    // Evict least recently used entry
-                    //    // (Implementation omitted for brevity)
-                    //    break;
-                    //case 3: // lfu
-                    //    // Evict least frequently used entry
-                    //    // (Implementation omitted for brevity)
-                    //    break;
+                        // Reuse the freed index for the new entry
+                        if (freedIndex != -1) {
+                            StringBuilder tempSb2 = new StringBuilder(valPrior.length() + 1);
+                            tempSb2.append(valPrior).append(s.charAt(0));
+                            String newEntry2 = tempSb2.toString();
+                            dictionary[freedIndex] = newEntry2;
+                            LRUMap.put(newEntry2, 0);
+                        }
+                        break;
                     default:
                         // Unknown policy - treat as freeze
                         break;
@@ -538,5 +573,112 @@ public class LZWTool {
         }
 
         return header;
+    }
+
+    //============================================
+    // LRU Helper Methods
+    //============================================
+
+    /**
+     * Updates LRU tracking when an entry is used.
+     * Sets the used entry's timestamp to 0 and increments all other entries by 1.
+     *
+     * @param lruMap the LRU tracking map (entry string -> timestamp)
+     * @param usedEntry the dictionary entry that was just used
+     */
+    private static void updateLRUOnUse(Map<String, Integer> lruMap, String usedEntry) {
+        // Increment all entries by 1 first
+        for (Map.Entry<String, Integer> entry : lruMap.entrySet()) {
+            entry.setValue(entry.getValue() + 1);
+        }
+
+        // Set the used entry to 0 (most recently used)
+        // Only if it exists in the map (it should, but be safe)
+        if (lruMap.containsKey(usedEntry)) {
+            lruMap.put(usedEntry, 0);
+        }
+    }
+
+    /**
+     * Evicts the least recently used entry from both the LRU map and the dictionary.
+     * Finds the entry with the maximum timestamp and removes it.
+     * Returns the code that was freed for reuse.
+     *
+     * @param lruMap the LRU tracking map
+     * @param dictionary the compression dictionary (TST)
+     * @return the code that was freed, or -1 if no eviction occurred
+     */
+    private static int evictLRU(Map<String, Integer> lruMap, TSTmod<Integer> dictionary) {
+        if (lruMap.isEmpty()) {
+            return -1; // Nothing to evict
+        }
+
+        // Find entry with maximum timestamp (least recently used)
+        String lruEntry = null;
+        int maxTimestamp = -1;
+
+        for (Map.Entry<String, Integer> entry : lruMap.entrySet()) {
+            if (entry.getValue() > maxTimestamp) {
+                maxTimestamp = entry.getValue();
+                lruEntry = entry.getKey();
+            }
+        }
+
+        // Get the code before removing, then remove from both LRU map and dictionary
+        if (lruEntry != null) {
+            // Get the code associated with this entry
+            StringBuilder sb = new StringBuilder(lruEntry);
+            Integer freedCode = dictionary.get(sb);
+
+            // Remove from LRU map and dictionary
+            lruMap.remove(lruEntry);
+            dictionary.delete(lruEntry);
+
+            return (freedCode != null) ? freedCode : -1;
+        }
+
+        return -1;
+    }
+
+    /**
+     * Evicts the least recently used entry from both the LRU map and the decompression dictionary.
+     * Finds the entry with the maximum timestamp and removes it from the array.
+     * Returns the index that was freed for reuse.
+     *
+     * @param lruMap the LRU tracking map
+     * @param dictionary the decompression dictionary (array)
+     * @param alphabetSize the size of the initial alphabet (don't evict these)
+     * @return the index that was freed, or -1 if no eviction occurred
+     */
+    private static int evictLRUExpand(Map<String, Integer> lruMap, String[] dictionary, int alphabetSize) {
+        if (lruMap.isEmpty()) {
+            return -1; // Nothing to evict
+        }
+
+        // Find entry with maximum timestamp (least recently used)
+        String lruEntry = null;
+        int maxTimestamp = -1;
+
+        for (Map.Entry<String, Integer> entry : lruMap.entrySet()) {
+            if (entry.getValue() > maxTimestamp) {
+                maxTimestamp = entry.getValue();
+                lruEntry = entry.getKey();
+            }
+        }
+
+        // Remove from LRU map and find + remove from dictionary array
+        if (lruEntry != null) {
+            lruMap.remove(lruEntry);
+
+            // Find the index in the dictionary array (skip initial alphabet)
+            for (int i = alphabetSize; i < dictionary.length; i++) {
+                if (dictionary[i] != null && dictionary[i].equals(lruEntry)) {
+                    dictionary[i] = null;
+                    return i; // Return the freed index
+                }
+            }
+        }
+
+        return -1;
     }
 }

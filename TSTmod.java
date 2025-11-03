@@ -145,6 +145,50 @@ public class TSTmod<Value> {
         return x;
     }
 
+    /**
+     * Removes the key from the symbol table if the key is present.
+     * @param key the key
+     * @throws IllegalArgumentException if {@code key} is {@code null}
+     */
+    public void delete(String key) {
+        if (key == null) {
+            throw new IllegalArgumentException("calls delete() with null argument");
+        }
+        if (key.length() == 0) {
+            throw new IllegalArgumentException("key must have length >= 1");
+        }
+        // Convert String to StringBuilder for internal processing
+        StringBuilder sb = new StringBuilder(key);
+        if (contains(sb)) {
+            root = delete(root, sb, 0);
+            n--;
+        }
+    }
+
+    private Node<Value> delete(Node<Value> x, StringBuilder key, int d) {
+        if (x == null) return null;
+
+        char c = key.charAt(d);
+
+        if (c < x.c) {
+            x.left = delete(x.left, key, d);
+        } else if (c > x.c) {
+            x.right = delete(x.right, key, d);
+        } else if (d < key.length() - 1) {
+            x.mid = delete(x.mid, key, d + 1);
+        } else {
+            // Found the node to delete - set value to null
+            x.val = null;
+        }
+
+        // If node has no value and no children, remove it
+        if (x.val == null && x.left == null && x.mid == null && x.right == null) {
+            return null;
+        }
+
+        return x;
+    }
+
 
 }
 
