@@ -2,12 +2,13 @@
 *.class
 
 # Test output files
-test_alphabet.txt
-test_input.txt
-test_output.txt
-test_compressed.lzw
-compress_debug.log
-expand_debug.log
+test_alphabet*.txt
+test_input*.txt
+test_output*.txt
+test_compressed*.lzw
+compress_debug*.log
+expand_debug*.log
+*.log
 
 # LZW compressed files
 *.lzw

@@ -105,6 +105,10 @@ public class LZWTool {
             debug("LRUTrackerDecoder.remove(code=" + code + "), mapSize=" + map.size());
         }
 
+        boolean contains(int code) {
+            return map.containsKey(code);
+        }
+
         void printState() {
             debug("LRUTrackerDecoder state (size=" + map.size() + "):");
             List<Map.Entry<Integer, Integer>> entries = new ArrayList<>(map.entrySet());
@@ -353,18 +357,6 @@ public class LZWTool {
                         debug("Increased W to " + W);
                     }
 
-                    // LRU policy: evict if at capacity BEFORE adding new entry
-                    if (lruPolicy && nextCode == maxCode - 1) {
-                        debug("LRU: At capacity, need to evict");
-                        lruTracker.printState();
-                        String lruEntry = lruTracker.findLRU();
-                        if (lruEntry != null) {
-                            debug("EVICTING: '" + escapeString(lruEntry) + "'");
-                            dictionary.put(new StringBuilder(lruEntry), null);
-                            lruTracker.remove(lruEntry);
-                        }
-                    }
-
                     String nextStr = next.toString();
                     debug("ADDING to codebook: '" + escapeString(nextStr) + "' -> code " + nextCode);
                     dictionary.put(next, nextCode);
@@ -395,6 +387,24 @@ public class LZWTool {
                         nextCode = initialNextCode;
                         W = minW;
                         debug("Reset complete: nextCode=" + nextCode + ", W=" + W);
+                    } else if (lruPolicy) {
+                        // LRU: Dictionary is full, evict LRU and reuse its code
+                        debug("LRU: Dictionary full, evicting and reusing code");
+                        lruTracker.printState();
+                        String lruEntry = lruTracker.findLRU();
+                        if (lruEntry != null) {
+                            // Find the code assigned to the LRU entry
+                            Integer lruCode = dictionary.get(new StringBuilder(lruEntry));
+                            debug("EVICTING: '" + escapeString(lruEntry) + "' (code=" + lruCode + ")");
+                            dictionary.put(new StringBuilder(lruEntry), null);
+                            lruTracker.remove(lruEntry);
+
+                            // Reuse the evicted code for the new entry
+                            String nextStr = next.toString();
+                            debug("REUSING code " + lruCode + " for '" + escapeString(nextStr) + "'");
+                            dictionary.put(next, lruCode);
+                            lruTracker.use(nextStr);
+                        }
                     } else {
                         debug("FREEZE policy: codebook full, no action");
                     }
@@ -552,12 +562,14 @@ public class LZWTool {
             }
 
             String s;
+            boolean isSpecialCase = false;
             if (codeword < nextCode) {
                 s = dictionary[codeword];
                 debug("Codeword " + codeword + " -> '" + escapeString(s) + "'");
             } else if (codeword == nextCode) {
                 s = valPrior + valPrior.charAt(0);
                 debug("Codeword " + codeword + " not in table (special case): '" + escapeString(s) + "'");
+                isSpecialCase = true;
             } else {
                 System.err.println("Bad compressed code: " + codeword);
                 System.exit(1);
@@ -567,24 +579,13 @@ public class LZWTool {
             debug("OUTPUT: '" + escapeString(s) + "'");
             BinaryStdOut.write(s);
 
-            // Update LRU tracker for the used code (only track non-alphabet codes)
-            if (lruPolicy && codeword >= alphabetSize + 1) {
+            // Update LRU tracker for the used code (only if it's being tracked)
+            // Skip if special case because we'll update it when we add it to the dictionary
+            if (lruPolicy && !isSpecialCase && lruTracker.contains(codeword)) {
                 lruTracker.use(codeword);
             }
 
             if (nextCode < maxCode) {
-                // LRU: evict if at capacity BEFORE adding new entry
-                if (lruPolicy && nextCode == maxCode - 1) {
-                    debug("LRU: At capacity, need to evict");
-                    lruTracker.printState();
-                    int lruCode = lruTracker.findLRU();
-                    if (lruCode != -1) {
-                        debug("EVICTING: code=" + lruCode + " (was '" + escapeString(dictionary[lruCode]) + "')");
-                        dictionary[lruCode] = null;
-                        lruTracker.remove(lruCode);
-                    }
-                }
-
                 String newEntry = valPrior + s.charAt(0);
                 debug("ADDING to table: code " + nextCode + " -> '" + escapeString(newEntry) + "'");
                 dictionary[nextCode] = newEntry;
@@ -596,7 +597,26 @@ public class LZWTool {
 
                 nextCode++;
             } else {
-                debug("Table full (nextCode=" + nextCode + " >= maxCode=" + maxCode + ")");
+                // Table full
+                if (lruPolicy) {
+                    // LRU: Dictionary is full, evict LRU and reuse its code
+                    debug("LRU: Dictionary full, evicting and reusing code");
+                    lruTracker.printState();
+                    int lruCode = lruTracker.findLRU();
+                    if (lruCode != -1) {
+                        debug("EVICTING: code=" + lruCode + " (was '" + escapeString(dictionary[lruCode]) + "')");
+                        dictionary[lruCode] = null;
+                        lruTracker.remove(lruCode);
+
+                        // Reuse the evicted code for the new entry
+                        String newEntry = valPrior + s.charAt(0);
+                        debug("REUSING code " + lruCode + " for '" + escapeString(newEntry) + "'");
+                        dictionary[lruCode] = newEntry;
+                        lruTracker.use(lruCode);
+                    }
+                } else {
+                    debug("Table full (nextCode=" + nextCode + " >= maxCode=" + maxCode + ")");
+                }
             }
 
             valPrior = s;
