@@ -1,0 +1,10 @@
+# Compiled Java class files
+*.class
+
+# Test files
+test_*.txt
+test_*.lzw
+tiny_alphabet.txt
+
+# Debug output files
+debug-*.txt
