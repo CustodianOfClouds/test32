@@ -249,11 +249,16 @@ public class LZWTool {
             } else {
 
                 // Pattern not in codebook - output current and add new pattern
-                BinaryStdOut.write(dictionary.get(current), W);
+                Integer codeToWrite = dictionary.get(current);
+                BinaryStdOut.write(codeToWrite, W);
+
+                System.err.println("Encoder: Output pattern '" + current + "' (code=" + codeToWrite + ", W=" + W + ")");
 
                 // Update LRU timestamp: mark current pattern as recently used
-                if (policy.equals("lru")) {
+                // Only track patterns that are in the LRU map (exclude alphabet)
+                if (policy.equals("lru") && LRUMap.containsKey(current.toString())) {
                     lruTimestamp = updateLRUTimestamp(LRUMap, current.toString(), lruTimestamp);
+                    System.err.println("Encoder: Updated LRU for '" + current + "', timestamp=" + (lruTimestamp-1) + ", Map=" + LRUMap);
                 }
 
 
@@ -266,11 +271,14 @@ public class LZWTool {
                     }
 
                     // There's space in the dictionary - add new pattern
-                    dictionary.put(next, nextCode++);
+                    dictionary.put(next, nextCode);
+                    System.err.println("Encoder: Added pattern '" + next + "' (code=" + nextCode + ")");
+                    nextCode++;
 
                     // Add new pattern to LRU tracking with current timestamp (will be marked as used when needed)
                     if (policy.equals("lru")) {
                         LRUMap.put(next.toString(), lruTimestamp);
+                        System.err.println("Encoder: Added '" + next + "' to LRU with timestamp=" + lruTimestamp + ", Map=" + LRUMap);
                         lruTimestamp++;
                     }
 
@@ -356,7 +364,8 @@ public class LZWTool {
             BinaryStdOut.write(dictionary.get(current), W);
 
             // Update LRU timestamp for final pattern
-            if (policy.equals("lru")) {
+            // Only track patterns that are in the LRU map (exclude alphabet)
+            if (policy.equals("lru") && LRUMap.containsKey(current.toString())) {
                 lruTimestamp = updateLRUTimestamp(LRUMap, current.toString(), lruTimestamp);
             }
         }
@@ -410,6 +419,8 @@ public class LZWTool {
 
         // handle first codeword
         int current = BinaryStdIn.readInt(W);
+        System.err.println("Decoder: Read FIRST code " + current + " (W=" + W + ")");
+
         // Check if first code is EOF (empty file)
         if (current == EOF_CODE) {
             BinaryStdOut.close();
@@ -418,10 +429,13 @@ public class LZWTool {
 
         if (current < h.alphabetSize) { // should be in initial dictionary
             BinaryStdOut.write(dictionary[current]);
+            System.err.println("Decoder: Output FIRST code " + current + " (string='" + dictionary[current] + "')");
 
             // Update LRU timestamp for first code to stay in sync with encoder
-            if (h.policy == 2) { // policy 2 = LRU
+            // Only track codes that are in the LRU map (exclude alphabet)
+            if (h.policy == 2 && LRUMap.containsKey(current)) { // policy 2 = LRU
                 lruTimestamp = updateLRUTimestampDecoder(LRUMap, current, lruTimestamp);
+                System.err.println("Decoder: Updated LRU for FIRST code " + current + ", timestamp=" + (lruTimestamp-1) + ", Map=" + LRUMap);
             }
         } else {
             System.err.println("Bad compressed code: " + current);
@@ -429,14 +443,17 @@ public class LZWTool {
         }
         String valPrior = dictionary[current]; // need this for later building
 
-        while (!BinaryStdIn.isEmpty()) { 
+        while (!BinaryStdIn.isEmpty()) {
+            boolean cScScCase = false; // Track if we're in the cScSc case
 
             // Check if width needs to increase BEFORE reading next code
             if (nextCode >= (1 << W) && W < h.maxW) {
+                System.err.println("Decoder: Width increased to " + (W+1));
                 W++;
             }
-            
+
             current = BinaryStdIn.readInt(W);
+            System.err.println("Decoder: Read code " + current + " (W=" + W + ")");
 
             // Check for EOF code
             if (current == EOF_CODE) {
@@ -484,6 +501,11 @@ public class LZWTool {
                 StringBuilder tempSb = new StringBuilder(valPrior.length() + 1);
                 tempSb.append(valPrior).append(valPrior.charAt(0));
                 s = tempSb.toString();
+
+                // In cScSc case, we're about to add this code to the dictionary
+                // But we need to mark it as "used" when we output it
+                // So we set a flag to update LRU after adding
+                cScScCase = true;
             } else {
                 // Invalid code
                 System.err.println("Bad compressed code: " + current);
@@ -492,9 +514,13 @@ public class LZWTool {
 
             BinaryStdOut.write(s);
 
+            System.err.println("Decoder: Output code " + current + " (string='" + s + "')");
+
             // Update LRU timestamp when outputting a code
-            if (h.policy == 2) { // policy 2 = LRU
+            // Only track codes that are in the LRU map (exclude alphabet)
+            if (h.policy == 2 && LRUMap.containsKey(current)) { // policy 2 = LRU
                 lruTimestamp = updateLRUTimestampDecoder(LRUMap, current, lruTimestamp);
+                System.err.println("Decoder: Updated LRU for code " + current + ", timestamp=" + (lruTimestamp-1) + ", Map=" + LRUMap);
             }
 
             // Add new entry: previous string + first char of current string
@@ -505,10 +531,20 @@ public class LZWTool {
                 tempSb.append(valPrior).append(s.charAt(0));
                 dictionary[nextCode] = tempSb.toString();
 
+                System.err.println("Decoder: Added code " + nextCode + " (string='" + dictionary[nextCode] + "')");
+
                 // Add new code to LRU tracking with current timestamp
                 if (h.policy == 2) { // policy 2 = LRU
                     LRUMap.put(nextCode, lruTimestamp);
+                    System.err.println("Decoder: Added code " + nextCode + " to LRU with timestamp=" + lruTimestamp + ", Map=" + LRUMap);
                     lruTimestamp++;
+
+                    // If this was the cScSc case, we need to immediately update it
+                    // because we output it right after constructing it
+                    if (cScScCase) {
+                        lruTimestamp = updateLRUTimestampDecoder(LRUMap, nextCode, lruTimestamp);
+                        System.err.println("Decoder: cScSc case - Updated LRU for code " + nextCode + ", timestamp=" + (lruTimestamp-1));
+                    }
                 }
 
                 nextCode++;

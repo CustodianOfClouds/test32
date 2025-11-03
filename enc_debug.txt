@@ -1,0 +1,104 @@
+Encoder: Output pattern 'A' (code=2, W=4)
+Encoder: Updated LRU for 'A', timestamp=0, Map={}
+Encoder: Added pattern 'AB' (code=8)
+Encoder: Added 'AB' to LRU with timestamp=1, Map={AB=1}
+Encoder: Output pattern 'B' (code=3, W=4)
+Encoder: Updated LRU for 'B', timestamp=2, Map={AB=1}
+Encoder: Added pattern 'BA' (code=9)
+Encoder: Added 'BA' to LRU with timestamp=3, Map={AB=1, BA=3}
+Encoder: Output pattern 'AB' (code=8, W=4)
+Encoder: Updated LRU for 'AB', timestamp=4, Map={AB=4, BA=3}
+Encoder: Added pattern 'ABA' (code=10)
+Encoder: Added 'ABA' to LRU with timestamp=5, Map={ABA=5, AB=4, BA=3}
+Encoder: Output pattern 'ABA' (code=10, W=4)
+Encoder: Updated LRU for 'ABA', timestamp=6, Map={ABA=6, AB=4, BA=3}
+Encoder: Added pattern 'ABAB' (code=11)
+Encoder: Added 'ABAB' to LRU with timestamp=7, Map={ABA=6, AB=4, ABAB=7, BA=3}
+Encoder: Output pattern 'BA' (code=9, W=4)
+Encoder: Updated LRU for 'BA', timestamp=8, Map={ABA=6, AB=4, ABAB=7, BA=8}
+Encoder: Added pattern 'BAB' (code=12)
+Encoder: Added 'BAB' to LRU with timestamp=9, Map={ABA=6, AB=4, BAB=9, ABAB=7, BA=8}
+Encoder: Output pattern 'B' (code=3, W=4)
+Encoder: Updated LRU for 'B', timestamp=10, Map={ABA=6, AB=4, BAB=9, ABAB=7, BA=8}
+Encoder: Added pattern 'BC' (code=13)
+Encoder: Added 'BC' to LRU with timestamp=11, Map={ABA=6, AB=4, BC=11, BAB=9, ABAB=7, BA=8}
+Encoder: Output pattern 'C' (code=5, W=4)
+Encoder: Updated LRU for 'C', timestamp=12, Map={ABA=6, AB=4, BC=11, BAB=9, ABAB=7, BA=8}
+Encoder: Added pattern 'CA' (code=14)
+Encoder: Added 'CA' to LRU with timestamp=13, Map={ABA=6, AB=4, BC=11, BAB=9, ABAB=7, CA=13, BA=8}
+Encoder: Output pattern 'AB' (code=8, W=4)
+Encoder: Updated LRU for 'AB', timestamp=14, Map={ABA=6, AB=14, BC=11, BAB=9, ABAB=7, CA=13, BA=8}
+Encoder: Added pattern 'ABC' (code=15)
+Encoder: Added 'ABC' to LRU with timestamp=15, Map={ABA=6, AB=14, BC=11, ABC=15, BAB=9, ABAB=7, CA=13, BA=8}
+Encoder: Output pattern 'CA' (code=14, W=4)
+Encoder: Updated LRU for 'CA', timestamp=16, Map={ABA=6, AB=14, BC=11, ABC=15, BAB=9, ABAB=7, CA=16, BA=8}
+LRU Eviction: Removing pattern 'ABA' (code=10, timestamp=6)
+LRU Eviction: Added pattern 'CAB' (code=10)
+LRU Map state: {AB=14, BC=11, ABC=15, BAB=9, CAB=17, ABAB=7, CA=16, BA=8}
+Encoder: Output pattern 'BC' (code=13, W=4)
+Encoder: Updated LRU for 'BC', timestamp=18, Map={AB=14, BC=18, ABC=15, BAB=9, CAB=17, ABAB=7, CA=16, BA=8}
+LRU Eviction: Removing pattern 'ABAB' (code=11, timestamp=7)
+LRU Eviction: Added pattern 'BCA' (code=11)
+LRU Map state: {AB=14, BC=18, BCA=19, ABC=15, BAB=9, CAB=17, CA=16, BA=8}
+Encoder: Output pattern 'ABC' (code=15, W=4)
+Encoder: Updated LRU for 'ABC', timestamp=20, Map={AB=14, BC=18, BCA=19, ABC=20, BAB=9, CAB=17, CA=16, BA=8}
+LRU Eviction: Removing pattern 'BA' (code=9, timestamp=8)
+LRU Eviction: Added pattern 'ABCA' (code=9)
+LRU Map state: {AB=14, BC=18, BCA=19, ABCA=21, ABC=20, BAB=9, CAB=17, CA=16}
+Encoder: Output pattern 'ABCA' (code=9, W=4)
+Encoder: Updated LRU for 'ABCA', timestamp=22, Map={AB=14, BC=18, BCA=19, ABCA=22, ABC=20, BAB=9, CAB=17, CA=16}
+LRU Eviction: Removing pattern 'BAB' (code=12, timestamp=9)
+LRU Eviction: Added pattern 'ABCAB' (code=12)
+LRU Map state: {AB=14, BC=18, BCA=19, ABCA=22, ABCAB=23, ABC=20, CAB=17, CA=16}
+Encoder: Output pattern 'B' (code=3, W=4)
+Encoder: Updated LRU for 'B', timestamp=24, Map={AB=14, BC=18, BCA=19, ABCA=22, ABCAB=23, ABC=20, CAB=17, CA=16}
+LRU Eviction: Removing pattern 'AB' (code=8, timestamp=14)
+LRU Eviction: Added pattern 'BA' (code=8)
+LRU Map state: {BC=18, BCA=19, ABCA=22, ABCAB=23, ABC=20, CAB=17, CA=16, BA=25}
+Encoder: Output pattern 'A' (code=2, W=4)
+Encoder: Updated LRU for 'A', timestamp=26, Map={BC=18, BCA=19, ABCA=22, ABCAB=23, ABC=20, CAB=17, CA=16, BA=25}
+LRU Eviction: Removing pattern 'CA' (code=14, timestamp=16)
+LRU Eviction: Added pattern 'AB' (code=14)
+LRU Map state: {BC=18, BCA=19, ABCA=22, ABCAB=23, AB=27, ABC=20, CAB=17, BA=25}
+Encoder: Output pattern 'BCA' (code=11, W=4)
+Encoder: Updated LRU for 'BCA', timestamp=28, Map={BC=18, BCA=28, ABCA=22, ABCAB=23, AB=27, ABC=20, CAB=17, BA=25}
+LRU Eviction: Removing pattern 'CAB' (code=10, timestamp=17)
+LRU Eviction: Added pattern 'BCAB' (code=10)
+LRU Map state: {BC=18, BCA=28, ABCA=22, ABCAB=23, AB=27, ABC=20, BCAB=29, BA=25}
+Encoder: Output pattern 'BCAB' (code=10, W=4)
+Encoder: Updated LRU for 'BCAB', timestamp=30, Map={BC=18, BCA=28, ABCA=22, ABCAB=23, AB=27, ABC=20, BCAB=30, BA=25}
+LRU Eviction: Removing pattern 'BC' (code=13, timestamp=18)
+LRU Eviction: Added pattern 'BCABC' (code=13)
+LRU Map state: {BCABC=31, BCA=28, ABCA=22, ABCAB=23, AB=27, ABC=20, BCAB=30, BA=25}
+Encoder: Output pattern 'C' (code=5, W=4)
+Encoder: Updated LRU for 'C', timestamp=32, Map={BCABC=31, BCA=28, ABCA=22, ABCAB=23, AB=27, ABC=20, BCAB=30, BA=25}
+LRU Eviction: Removing pattern 'ABC' (code=15, timestamp=20)
+LRU Eviction: Added pattern 'CA' (code=15)
+LRU Map state: {BCABC=31, BCA=28, ABCA=22, ABCAB=23, AB=27, BCAB=30, CA=33, BA=25}
+Encoder: Output pattern 'AB' (code=14, W=4)
+Encoder: Updated LRU for 'AB', timestamp=34, Map={BCABC=31, BCA=28, ABCA=22, ABCAB=23, AB=34, BCAB=30, CA=33, BA=25}
+LRU Eviction: Removing pattern 'ABCA' (code=9, timestamp=22)
+LRU Eviction: Added pattern 'ABA' (code=9)
+LRU Map state: {BCABC=31, ABA=35, BCA=28, ABCAB=23, AB=34, BCAB=30, CA=33, BA=25}
+Encoder: Output pattern 'AB' (code=14, W=4)
+Encoder: Updated LRU for 'AB', timestamp=36, Map={BCABC=31, ABA=35, BCA=28, ABCAB=23, AB=36, BCAB=30, CA=33, BA=25}
+LRU Eviction: Removing pattern 'ABCAB' (code=12, timestamp=23)
+LRU Eviction: Added pattern 'ABC' (code=12)
+LRU Map state: {BCABC=31, ABA=35, BCA=28, AB=36, ABC=37, BCAB=30, CA=33, BA=25}
+Encoder: Output pattern 'CA' (code=15, W=4)
+Encoder: Updated LRU for 'CA', timestamp=38, Map={BCABC=31, ABA=35, BCA=28, AB=36, ABC=37, BCAB=30, CA=38, BA=25}
+LRU Eviction: Removing pattern 'BA' (code=8, timestamp=25)
+LRU Eviction: Added pattern 'CAB' (code=8)
+LRU Map state: {BCABC=31, ABA=35, BCA=28, AB=36, ABC=37, CAB=39, BCAB=30, CA=38}
+Encoder: Output pattern 'B' (code=3, W=4)
+Encoder: Updated LRU for 'B', timestamp=40, Map={BCABC=31, ABA=35, BCA=28, AB=36, ABC=37, CAB=39, BCAB=30, CA=38}
+LRU Eviction: Removing pattern 'BCA' (code=11, timestamp=28)
+LRU Eviction: Added pattern 'BC' (code=11)
+LRU Map state: {BCABC=31, ABA=35, AB=36, BC=41, ABC=37, CAB=39, BCAB=30, CA=38}
+Encoder: Output pattern 'C' (code=5, W=4)
+Encoder: Updated LRU for 'C', timestamp=42, Map={BCABC=31, ABA=35, AB=36, BC=41, ABC=37, CAB=39, BCAB=30, CA=38}
+LRU Eviction: Removing pattern 'BCAB' (code=10, timestamp=30)
+LRU Eviction: Added pattern 'C
+' (code=10)
+LRU Map state: {BCABC=31, ABA=35, AB=36, BC=41, ABC=37, CAB=39, C
+=43, CA=38}

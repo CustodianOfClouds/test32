@@ -1,0 +1,130 @@
+Decoder: Read FIRST code 2 (W=4)
+Decoder: Output FIRST code 2 (string='A')
+Decoder: Updated LRU for FIRST code 2, timestamp=0, Map={}
+Decoder: Read code 3 (W=4)
+Decoder: Output code 3 (string='B')
+Decoder: Updated LRU for code 3, timestamp=1, Map={}
+Decoder: Added code 8 (string='AB')
+Decoder: Added code 8 to LRU with timestamp=2, Map={8=2}
+Decoder: Read code 8 (W=4)
+Decoder: Output code 8 (string='AB')
+Decoder: Updated LRU for code 8, timestamp=3, Map={8=3}
+Decoder: Added code 9 (string='BA')
+Decoder: Added code 9 to LRU with timestamp=4, Map={8=3, 9=4}
+Decoder: Read code 10 (W=4)
+Decoder: Output code 10 (string='ABA')
+Decoder: Updated LRU for code 10, timestamp=5, Map={8=3, 9=4}
+Decoder: Added code 10 (string='ABA')
+Decoder: Added code 10 to LRU with timestamp=6, Map={8=3, 9=4, 10=6}
+Decoder: Read code 9 (W=4)
+Decoder: Output code 9 (string='BA')
+Decoder: Updated LRU for code 9, timestamp=7, Map={8=3, 9=7, 10=6}
+Decoder: Added code 11 (string='ABAB')
+Decoder: Added code 11 to LRU with timestamp=8, Map={8=3, 9=7, 10=6, 11=8}
+Decoder: Read code 3 (W=4)
+Decoder: Output code 3 (string='B')
+Decoder: Updated LRU for code 3, timestamp=9, Map={8=3, 9=7, 10=6, 11=8}
+Decoder: Added code 12 (string='BAB')
+Decoder: Added code 12 to LRU with timestamp=10, Map={8=3, 9=7, 10=6, 11=8, 12=10}
+Decoder: Read code 5 (W=4)
+Decoder: Output code 5 (string='C')
+Decoder: Updated LRU for code 5, timestamp=11, Map={8=3, 9=7, 10=6, 11=8, 12=10}
+Decoder: Added code 13 (string='BC')
+Decoder: Added code 13 to LRU with timestamp=12, Map={8=3, 9=7, 10=6, 11=8, 12=10, 13=12}
+Decoder: Read code 8 (W=4)
+Decoder: Output code 8 (string='AB')
+Decoder: Updated LRU for code 8, timestamp=13, Map={8=13, 9=7, 10=6, 11=8, 12=10, 13=12}
+Decoder: Added code 14 (string='CA')
+Decoder: Added code 14 to LRU with timestamp=14, Map={8=13, 9=7, 10=6, 11=8, 12=10, 13=12, 14=14}
+Decoder: Read code 14 (W=4)
+Decoder: Output code 14 (string='CA')
+Decoder: Updated LRU for code 14, timestamp=15, Map={8=13, 9=7, 10=6, 11=8, 12=10, 13=12, 14=15}
+Decoder: Added code 15 (string='ABC')
+Decoder: Added code 15 to LRU with timestamp=16, Map={8=13, 9=7, 10=6, 11=8, 12=10, 13=12, 14=15, 15=16}
+Decoder: Read code 13 (W=4)
+Decoder: Output code 13 (string='BC')
+Decoder: Updated LRU for code 13, timestamp=17, Map={8=13, 9=7, 10=6, 11=8, 12=10, 13=17, 14=15, 15=16}
+LRU Eviction (Decoder): Removing code 10 (string='ABA', timestamp=6)
+LRU Eviction (Decoder): Added code 10 (string='CAB')
+LRU Map state (Decoder): {8=13, 9=7, 10=18, 11=8, 12=10, 13=17, 14=15, 15=16}
+Decoder: Read code 15 (W=4)
+Decoder: Output code 15 (string='ABC')
+Decoder: Updated LRU for code 15, timestamp=19, Map={8=13, 9=7, 10=18, 11=8, 12=10, 13=17, 14=15, 15=19}
+LRU Eviction (Decoder): Removing code 9 (string='BA', timestamp=7)
+LRU Eviction (Decoder): Added code 9 (string='BCA')
+LRU Map state (Decoder): {8=13, 9=20, 10=18, 11=8, 12=10, 13=17, 14=15, 15=19}
+Decoder: Read code 9 (W=4)
+Decoder: Output code 9 (string='BCA')
+Decoder: Updated LRU for code 9, timestamp=21, Map={8=13, 9=21, 10=18, 11=8, 12=10, 13=17, 14=15, 15=19}
+LRU Eviction (Decoder): Removing code 11 (string='ABAB', timestamp=8)
+LRU Eviction (Decoder): Added code 11 (string='ABCB')
+LRU Map state (Decoder): {8=13, 9=21, 10=18, 11=22, 12=10, 13=17, 14=15, 15=19}
+Decoder: Read code 3 (W=4)
+Decoder: Output code 3 (string='B')
+Decoder: Updated LRU for code 3, timestamp=23, Map={8=13, 9=21, 10=18, 11=22, 12=10, 13=17, 14=15, 15=19}
+LRU Eviction (Decoder): Removing code 12 (string='BAB', timestamp=10)
+LRU Eviction (Decoder): Added code 12 (string='BCAB')
+LRU Map state (Decoder): {8=13, 9=21, 10=18, 11=22, 12=24, 13=17, 14=15, 15=19}
+Decoder: Read code 2 (W=4)
+Decoder: Output code 2 (string='A')
+Decoder: Updated LRU for code 2, timestamp=25, Map={8=13, 9=21, 10=18, 11=22, 12=24, 13=17, 14=15, 15=19}
+LRU Eviction (Decoder): Removing code 8 (string='AB', timestamp=13)
+LRU Eviction (Decoder): Added code 8 (string='BA')
+LRU Map state (Decoder): {8=26, 9=21, 10=18, 11=22, 12=24, 13=17, 14=15, 15=19}
+Decoder: Read code 11 (W=4)
+Decoder: Output code 11 (string='ABCB')
+Decoder: Updated LRU for code 11, timestamp=27, Map={8=26, 9=21, 10=18, 11=27, 12=24, 13=17, 14=15, 15=19}
+LRU Eviction (Decoder): Removing code 14 (string='CA', timestamp=15)
+LRU Eviction (Decoder): Added code 14 (string='AA')
+LRU Map state (Decoder): {8=26, 9=21, 10=18, 11=27, 12=24, 13=17, 14=28, 15=19}
+Decoder: Read code 10 (W=4)
+Decoder: Output code 10 (string='CAB')
+Decoder: Updated LRU for code 10, timestamp=29, Map={8=26, 9=21, 10=29, 11=27, 12=24, 13=17, 14=28, 15=19}
+LRU Eviction (Decoder): Removing code 13 (string='BC', timestamp=17)
+LRU Eviction (Decoder): Added code 13 (string='ABCBC')
+LRU Map state (Decoder): {8=26, 9=21, 10=29, 11=27, 12=24, 13=30, 14=28, 15=19}
+Decoder: Read code 5 (W=4)
+Decoder: Output code 5 (string='C')
+Decoder: Updated LRU for code 5, timestamp=31, Map={8=26, 9=21, 10=29, 11=27, 12=24, 13=30, 14=28, 15=19}
+LRU Eviction (Decoder): Removing code 15 (string='ABC', timestamp=19)
+LRU Eviction (Decoder): Added code 15 (string='CABC')
+LRU Map state (Decoder): {8=26, 9=21, 10=29, 11=27, 12=24, 13=30, 14=28, 15=32}
+Decoder: Read code 14 (W=4)
+Decoder: Output code 14 (string='AA')
+Decoder: Updated LRU for code 14, timestamp=33, Map={8=26, 9=21, 10=29, 11=27, 12=24, 13=30, 14=33, 15=32}
+LRU Eviction (Decoder): Removing code 9 (string='BCA', timestamp=21)
+LRU Eviction (Decoder): Added code 9 (string='CA')
+LRU Map state (Decoder): {8=26, 9=34, 10=29, 11=27, 12=24, 13=30, 14=33, 15=32}
+Decoder: Read code 14 (W=4)
+Decoder: Output code 14 (string='AA')
+Decoder: Updated LRU for code 14, timestamp=35, Map={8=26, 9=34, 10=29, 11=27, 12=24, 13=30, 14=35, 15=32}
+LRU Eviction (Decoder): Removing code 12 (string='BCAB', timestamp=24)
+LRU Eviction (Decoder): Added code 12 (string='AAA')
+LRU Map state (Decoder): {8=26, 9=34, 10=29, 11=27, 12=36, 13=30, 14=35, 15=32}
+Decoder: Read code 15 (W=4)
+Decoder: Output code 15 (string='CABC')
+Decoder: Updated LRU for code 15, timestamp=37, Map={8=26, 9=34, 10=29, 11=27, 12=36, 13=30, 14=35, 15=37}
+LRU Eviction (Decoder): Removing code 8 (string='BA', timestamp=26)
+LRU Eviction (Decoder): Added code 8 (string='AAC')
+LRU Map state (Decoder): {8=38, 9=34, 10=29, 11=27, 12=36, 13=30, 14=35, 15=37}
+Decoder: Read code 3 (W=4)
+Decoder: Output code 3 (string='B')
+Decoder: Updated LRU for code 3, timestamp=39, Map={8=38, 9=34, 10=29, 11=27, 12=36, 13=30, 14=35, 15=37}
+LRU Eviction (Decoder): Removing code 11 (string='ABCB', timestamp=27)
+LRU Eviction (Decoder): Added code 11 (string='CABCB')
+LRU Map state (Decoder): {8=38, 9=34, 10=29, 11=40, 12=36, 13=30, 14=35, 15=37}
+Decoder: Read code 5 (W=4)
+Decoder: Output code 5 (string='C')
+Decoder: Updated LRU for code 5, timestamp=41, Map={8=38, 9=34, 10=29, 11=40, 12=36, 13=30, 14=35, 15=37}
+LRU Eviction (Decoder): Removing code 10 (string='CAB', timestamp=29)
+LRU Eviction (Decoder): Added code 10 (string='BC')
+LRU Map state (Decoder): {8=38, 9=34, 10=42, 11=40, 12=36, 13=30, 14=35, 15=37}
+Decoder: Read code 1 (W=4)
+Decoder: Output code 1 (string='
+')
+Decoder: Updated LRU for code 1, timestamp=43, Map={8=38, 9=34, 10=42, 11=40, 12=36, 13=30, 14=35, 15=37}
+LRU Eviction (Decoder): Removing code 13 (string='ABCBC', timestamp=30)
+LRU Eviction (Decoder): Added code 13 (string='C
+')
+LRU Map state (Decoder): {8=38, 9=34, 10=42, 11=40, 12=36, 13=44, 14=35, 15=37}
+Decoder: Read code 7 (W=4)
