@@ -41,20 +41,45 @@ public class LZWTool {
         LRUNode tail; // Least recently used
         HashMap<Integer, LRUNode> indirectionTable; // code -> node
         int alphabetSize;
-        
+        boolean debugMode = false;
+
         LRUQueue(int alphabetSize) {
             this.alphabetSize = alphabetSize;
             this.indirectionTable = new HashMap<>();
+        }
+
+        // Enable debug mode
+        void setDebugMode(boolean debug) {
+            this.debugMode = debug;
+        }
+
+        // Print the LRU queue state
+        String getQueueState() {
+            StringBuilder sb = new StringBuilder("[");
+            LRUNode current = head;
+            while (current != null) {
+                sb.append(current.code).append(":\"").append(current.key).append("\"");
+                if (current.next != null) {
+                    sb.append(", ");
+                }
+                current = current.next;
+            }
+            sb.append("]");
+            return sb.toString();
         }
         
         // Add a new entry to the head (most recent)
         void addToHead(StringBuilder key, int code) {
             // Don't track alphabet entries
             if (code < alphabetSize) return;
-            
+
+            if (debugMode) {
+                System.err.println("  LRU ADD: code=" + code + " key=\"" + key + "\"");
+            }
+
             LRUNode node = new LRUNode(key, code);
             indirectionTable.put(code, node);
-            
+
             if (head == null) {
                 head = tail = node;
             } else {
@@ -62,16 +87,35 @@ public class LZWTool {
                 head.prev = node;
                 head = node;
             }
+
+            if (debugMode) {
+                System.err.println("  LRU Queue after ADD: " + getQueueState());
+            }
         }
         
         // Move an existing node to the head (mark as recently used)
         void moveToHead(int code) {
             // Don't track alphabet entries
             if (code < alphabetSize) return;
-            
+
+            if (debugMode) {
+                System.err.println("  LRU MOVE: code=" + code);
+            }
+
             LRUNode node = indirectionTable.get(code);
-            if (node == null || node == head) return;
-            
+            if (node == null) {
+                if (debugMode) {
+                    System.err.println("  LRU MOVE: code not in queue (no-op)");
+                }
+                return;
+            }
+            if (node == head) {
+                if (debugMode) {
+                    System.err.println("  LRU MOVE: already at head (no-op)");
+                }
+                return;
+            }
+
             // Remove from current position
             if (node.prev != null) {
                 node.prev.next = node.next;
@@ -82,28 +126,40 @@ public class LZWTool {
             if (node == tail) {
                 tail = node.prev;
             }
-            
+
             // Add to head
             node.prev = null;
             node.next = head;
             head.prev = node;
             head = node;
+
+            if (debugMode) {
+                System.err.println("  LRU Queue after MOVE: " + getQueueState());
+            }
         }
         
         // Remove and return the least recently used entry
         LRUNode removeTail() {
             if (tail == null) return null;
-            
+
+            if (debugMode) {
+                System.err.println("  LRU EVICT: code=" + tail.code + " key=\"" + tail.key + "\"");
+            }
+
             LRUNode lru = tail;
             indirectionTable.remove(lru.code);
-            
+
             if (tail.prev != null) {
                 tail = tail.prev;
                 tail.next = null;
             } else {
                 head = tail = null;
             }
-            
+
+            if (debugMode) {
+                System.err.println("  LRU Queue after EVICT: " + getQueueState());
+            }
+
             return lru;
         }
     }
@@ -256,6 +312,10 @@ public class LZWTool {
         LRUQueue lruQueue = null;
         if (policy.equals("lru")) {
             lruQueue = new LRUQueue(alphabet.size());
+            lruQueue.setDebugMode(true); // Enable debug mode for LRU
+            System.err.println("=== COMPRESSION DEBUG MODE ===");
+            System.err.println("Alphabet size: " + alphabet.size());
+            System.err.println("minW: " + minW + ", maxW: " + maxW + ", maxCode: " + maxCode);
         }
 
         if (BinaryStdIn.isEmpty()) {
@@ -281,9 +341,14 @@ public class LZWTool {
             
             if (dictionary.contains(next)) {
                 current = next;
-            } else { 
+            } else {
                 // Output current pattern
                 int outputCode = dictionary.get(current);
+
+                if (lruQueue != null) {
+                    System.err.println("\n[COMPRESS] Output code=" + outputCode + " for \"" + current + "\" (W=" + W + ")");
+                }
+
                 BinaryStdOut.write(outputCode, W);
 
                 // Update LRU: mark this code as recently used
@@ -296,13 +361,17 @@ public class LZWTool {
                         W++;
                     }
 
+                    if (lruQueue != null) {
+                        System.err.println("[COMPRESS] Add to dictionary: \"" + next + "\" -> code=" + nextCode);
+                    }
+
                     dictionary.put(next, nextCode);
-                    
+
                     // Add new entry to LRU queue
                     if (lruQueue != null) {
                         lruQueue.addToHead(next, nextCode);
                     }
-                    
+
                     nextCode++;
 
                 } else {
@@ -328,13 +397,16 @@ public class LZWTool {
                             W = minW;
                             break;
                         case "lru":
+                            System.err.println("[COMPRESS] Dictionary FULL, evicting LRU entry...");
                             // Evict least recently used entry
                             LRUNode lru = lruQueue.removeTail();
                             if (lru != null) {
+                                System.err.println("[COMPRESS] Evicted code=" + lru.code + " (was \"" + lru.key + "\")");
                                 // Remove from dictionary
                                 dictionary.put(lru.key, null);
-                                
+
                                 // Add new entry with the evicted code
+                                System.err.println("[COMPRESS] Reuse code=" + lru.code + " for \"" + next + "\"");
                                 dictionary.put(next, lru.code);
                                 lruQueue.addToHead(next, lru.code);
                             }
@@ -351,8 +423,13 @@ public class LZWTool {
         // Output final pattern
         if (current.length() > 0) {
             int outputCode = dictionary.get(current);
+
+            if (lruQueue != null) {
+                System.err.println("\n[COMPRESS] Output FINAL code=" + outputCode + " for \"" + current + "\" (W=" + W + ")");
+            }
+
             BinaryStdOut.write(outputCode, W);
-            
+
             if (lruQueue != null) {
                 lruQueue.moveToHead(outputCode);
             }
@@ -361,7 +438,12 @@ public class LZWTool {
         if (nextCode >= (1 << W) && W < maxW) {
             W++;
         }
-        
+
+        if (lruQueue != null) {
+            System.err.println("\n[COMPRESS] Output EOF code=" + EOF_CODE + " (W=" + W + ")");
+            System.err.println("=== COMPRESSION COMPLETE ===\n");
+        }
+
         BinaryStdOut.write(EOF_CODE, W);
         BinaryStdOut.close();
     }
@@ -385,6 +467,10 @@ public class LZWTool {
         LRUQueue lruQueue = null;
         if (h.policy == 2) { // LRU policy
             lruQueue = new LRUQueue(h.alphabetSize);
+            lruQueue.setDebugMode(true); // Enable debug mode for LRU
+            System.err.println("=== DECOMPRESSION DEBUG MODE ===");
+            System.err.println("Alphabet size: " + h.alphabetSize);
+            System.err.println("minW: " + h.minW + ", maxW: " + h.maxW + ", maxCode: " + maxCode);
         }
 
         String[] dictionary = new String[maxCode];
@@ -403,19 +489,27 @@ public class LZWTool {
             return;
         }
 
+        if (lruQueue != null) {
+            System.err.println("\n[EXPAND] Read FIRST code=" + current + " (W=" + W + ")");
+        }
+
         if (current < h.alphabetSize) {
+            if (lruQueue != null) {
+                System.err.println("[EXPAND] Output \"" + dictionary[current] + "\"");
+            }
             BinaryStdOut.write(dictionary[current]);
         } else {
             System.err.println("Bad compressed code: " + current);
             System.exit(1);
         }
-        
+
         // Mark as recently used
         if (lruQueue != null) {
             lruQueue.moveToHead(current);
         }
-        
+
         String valPrior = dictionary[current];
+        int codePrior = current; // Track PREVIOUS code for one-step-behind LRU
 
         while (!BinaryStdIn.isEmpty()) { 
 
@@ -425,7 +519,14 @@ public class LZWTool {
             
             current = BinaryStdIn.readInt(W);
 
+            if (lruQueue != null) {
+                System.err.println("\n[EXPAND] Read code=" + current + " (W=" + W + ", nextCode=" + nextCode + ")");
+            }
+
             if (current == EOF_CODE) {
+                if (lruQueue != null) {
+                    System.err.println("[EXPAND] EOF reached");
+                }
                 break;
             }
 
@@ -442,64 +543,90 @@ public class LZWTool {
                 if (current == EOF_CODE) {
                     break;
                 }
-                    
+
                 valPrior = dictionary[current];
+                codePrior = current;
                 BinaryStdOut.write(valPrior);
-            
+
                 continue;
             }
 
             String s = "";
+            boolean isSpecialCase = (current == nextCode);
 
             if (current < nextCode) {
                 s = dictionary[current];
-            } else if (current == nextCode) {
+                if (lruQueue != null) {
+                    System.err.println("[EXPAND] Code in dictionary: \"" + s + "\"");
+                }
+            } else if (isSpecialCase) {
                 StringBuilder tempSb = new StringBuilder(valPrior.length() + 1);
                 tempSb.append(valPrior).append(valPrior.charAt(0));
                 s = tempSb.toString();
+                if (lruQueue != null) {
+                    System.err.println("[EXPAND] Special case (code==nextCode): s = valPrior + valPrior[0] = \"" + s + "\"");
+                }
             } else {
                 System.err.println("Bad compressed code: " + current);
                 System.exit(1);
             }
 
-            BinaryStdOut.write(s);
-            
-            // Mark as recently used
             if (lruQueue != null) {
-                lruQueue.moveToHead(current);
+                System.err.println("[EXPAND] Output \"" + s + "\"");
+            }
+            BinaryStdOut.write(s);
+
+            // One-step-behind: Move the PREVIOUS code BEFORE adding new entry
+            // This matches compression: moveToHead(output), then addToHead(new)
+            if (lruQueue != null) {
+                System.err.println("[EXPAND] Move PREVIOUS code=" + codePrior);
+                lruQueue.moveToHead(codePrior);
             }
 
             if (nextCode < maxCode) {
+                // Add new entry to dictionary
                 StringBuilder tempSb = new StringBuilder(valPrior.length() + 1);
                 tempSb.append(valPrior).append(s.charAt(0));
                 String newEntry = tempSb.toString();
+
+                if (lruQueue != null) {
+                    System.err.println("[EXPAND] Add to dictionary: \"" + newEntry + "\" -> code=" + nextCode);
+                }
+
                 dictionary[nextCode] = newEntry;
-                
-                // Add to LRU queue
+
                 if (lruQueue != null) {
                     lruQueue.addToHead(new StringBuilder(newEntry), nextCode);
                 }
-                
+
                 nextCode++;
 
             } else {
+                // Dictionary is full, need to evict
                 switch (h.policy) {
                     case 0: // freeze
+                        // Already moved codePrior above
                         break;
                     case 1: // reset
+                        // Already moved codePrior above
                         break;
                     case 2: // lru
+                        // Already moved codePrior above (to protect from eviction)
+                        System.err.println("[EXPAND] Dictionary FULL, evicting LRU entry...");
+                        System.err.println("[EXPAND] valPrior=\"" + valPrior + "\", s=\"" + s + "\", s[0]='" + s.charAt(0) + "'");
                         LRUNode lru = lruQueue.removeTail();
                         if (lru != null) {
-                            // Reuse the evicted code
+                            System.err.println("[EXPAND] Evicted code=" + lru.code + " (was \"" + lru.key + "\")");
                             StringBuilder tempSb = new StringBuilder(valPrior.length() + 1);
                             tempSb.append(valPrior).append(s.charAt(0));
                             String newEntry = tempSb.toString();
+                            System.err.println("[EXPAND] Reuse code=" + lru.code + " for \"" + newEntry + "\"");
                             dictionary[lru.code] = newEntry;
                             lruQueue.addToHead(new StringBuilder(newEntry), lru.code);
                         }
                         break;
                     case 3: // lfu
+                        // Already moved codePrior above
                         break;
                     default:
                         break;
@@ -507,7 +634,13 @@ public class LZWTool {
             }
 
             valPrior = s;
-        }   
+            codePrior = current; // Update for next iteration
+        }
+
+        if (lruQueue != null) {
+            System.err.println("\n=== DECOMPRESSION COMPLETE ===\n");
+        }
+
         BinaryStdOut.close();
     }
 
