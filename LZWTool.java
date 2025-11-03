@@ -177,8 +177,8 @@ public class LZWTool {
         }
 
         // LRU/LFU tracking structures
-        //Map<String, Integer> LRUMap = new HashMap<>();
-        //Map<String, Integer> LFUMap = new HashMap<>();
+        Map<String, Integer> LRUMap = new HashMap<>();
+        Map<String, Integer> LFUMap = new HashMap<>();
 
         // now let's start compressing!
         // raw binary data is piped in during actual execution, so we start reading from BinaryStdIn
@@ -212,12 +212,12 @@ public class LZWTool {
                 // Pattern exists - extend current pattern
                 current = next;
 
-                // Update LRU/LFU tracking structures 
-
             } else { 
 
                 // Pattern not in codebook - output current and add new pattern
                 BinaryStdOut.write(dictionary.get(current), W);
+
+                // Update LRU/LFU tracking structures ?
 
                 // log into dictionary, if space available
                 if (nextCode < maxCode) {
@@ -316,6 +316,10 @@ public class LZWTool {
             RESET_CODE = h.alphabetSize + 1;
             nextCode++; // skip resetcode   
         }
+
+        // LRU/LFU tracking structures
+        Map<String, Integer> LRUMap = new HashMap<>();
+        Map<String, Integer> LFUMap = new HashMap<>();
 
         // best data structure for decompression dictionary is an array
         String[] dictionary = new String[maxCode];
