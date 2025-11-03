@@ -1,0 +1,44 @@
+LRU Eviction: Removing pattern 'ABA' (code=10, timestamp=6)
+LRU Eviction: Added pattern 'CAB' (code=10)
+LRU Map state: {AB=14, BC=11, ABC=15, BAB=9, CAB=17, ABAB=7, CA=16, BA=8}
+LRU Eviction: Removing pattern 'ABAB' (code=11, timestamp=7)
+LRU Eviction: Added pattern 'BCA' (code=11)
+LRU Map state: {AB=14, BC=18, BCA=19, ABC=15, BAB=9, CAB=17, CA=16, BA=8}
+LRU Eviction: Removing pattern 'BA' (code=9, timestamp=8)
+LRU Eviction: Added pattern 'ABCA' (code=9)
+LRU Map state: {AB=14, BC=18, BCA=19, ABCA=21, ABC=20, BAB=9, CAB=17, CA=16}
+LRU Eviction: Removing pattern 'BAB' (code=12, timestamp=9)
+LRU Eviction: Added pattern 'ABCAB' (code=12)
+LRU Map state: {AB=14, BC=18, BCA=19, ABCA=22, ABCAB=23, ABC=20, CAB=17, CA=16}
+LRU Eviction: Removing pattern 'AB' (code=8, timestamp=14)
+LRU Eviction: Added pattern 'BA' (code=8)
+LRU Map state: {BC=18, BCA=19, ABCA=22, ABCAB=23, ABC=20, CAB=17, CA=16, BA=25}
+LRU Eviction: Removing pattern 'CA' (code=14, timestamp=16)
+LRU Eviction: Added pattern 'AB' (code=14)
+LRU Map state: {BC=18, BCA=19, ABCA=22, ABCAB=23, AB=27, ABC=20, CAB=17, BA=25}
+LRU Eviction: Removing pattern 'CAB' (code=10, timestamp=17)
+LRU Eviction: Added pattern 'BCAB' (code=10)
+LRU Map state: {BC=18, BCA=28, ABCA=22, ABCAB=23, AB=27, ABC=20, BCAB=29, BA=25}
+LRU Eviction: Removing pattern 'BC' (code=13, timestamp=18)
+LRU Eviction: Added pattern 'BCABC' (code=13)
+LRU Map state: {BCABC=31, BCA=28, ABCA=22, ABCAB=23, AB=27, ABC=20, BCAB=30, BA=25}
+LRU Eviction: Removing pattern 'ABC' (code=15, timestamp=20)
+LRU Eviction: Added pattern 'CA' (code=15)
+LRU Map state: {BCABC=31, BCA=28, ABCA=22, ABCAB=23, AB=27, BCAB=30, CA=33, BA=25}
+LRU Eviction: Removing pattern 'ABCA' (code=9, timestamp=22)
+LRU Eviction: Added pattern 'ABA' (code=9)
+LRU Map state: {BCABC=31, ABA=35, BCA=28, ABCAB=23, AB=34, BCAB=30, CA=33, BA=25}
+LRU Eviction: Removing pattern 'ABCAB' (code=12, timestamp=23)
+LRU Eviction: Added pattern 'ABC' (code=12)
+LRU Map state: {BCABC=31, ABA=35, BCA=28, AB=36, ABC=37, BCAB=30, CA=33, BA=25}
+LRU Eviction: Removing pattern 'BA' (code=8, timestamp=25)
+LRU Eviction: Added pattern 'CAB' (code=8)
+LRU Map state: {BCABC=31, ABA=35, BCA=28, AB=36, ABC=37, CAB=39, BCAB=30, CA=38}
+LRU Eviction: Removing pattern 'BCA' (code=11, timestamp=28)
+LRU Eviction: Added pattern 'BC' (code=11)
+LRU Map state: {BCABC=31, ABA=35, AB=36, BC=41, ABC=37, CAB=39, BCAB=30, CA=38}
+LRU Eviction: Removing pattern 'BCAB' (code=10, timestamp=30)
+LRU Eviction: Added pattern 'C
+' (code=10)
+LRU Map state: {BCABC=31, ABA=35, AB=36, BC=41, ABC=37, CAB=39, C
+=43, CA=38}

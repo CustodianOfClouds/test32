@@ -1,0 +1,43 @@
+LRU Eviction (Decoder): Removing code 10 (string='ABA', timestamp=5)
+LRU Eviction (Decoder): Added code 10 (string='CAB')
+LRU Map state (Decoder): {8=12, 9=6, 10=17, 11=7, 12=9, 13=16, 14=14, 15=15}
+LRU Eviction (Decoder): Removing code 9 (string='BA', timestamp=6)
+LRU Eviction (Decoder): Added code 9 (string='BCA')
+LRU Map state (Decoder): {8=12, 9=19, 10=17, 11=7, 12=9, 13=16, 14=14, 15=18}
+LRU Eviction (Decoder): Removing code 11 (string='ABAB', timestamp=7)
+LRU Eviction (Decoder): Added code 11 (string='ABCB')
+LRU Map state (Decoder): {8=12, 9=20, 10=17, 11=21, 12=9, 13=16, 14=14, 15=18}
+LRU Eviction (Decoder): Removing code 12 (string='BAB', timestamp=9)
+LRU Eviction (Decoder): Added code 12 (string='BCAB')
+LRU Map state (Decoder): {8=12, 9=20, 10=17, 11=21, 12=23, 13=16, 14=14, 15=18}
+LRU Eviction (Decoder): Removing code 8 (string='AB', timestamp=12)
+LRU Eviction (Decoder): Added code 8 (string='BA')
+LRU Map state (Decoder): {8=25, 9=20, 10=17, 11=21, 12=23, 13=16, 14=14, 15=18}
+LRU Eviction (Decoder): Removing code 14 (string='CA', timestamp=14)
+LRU Eviction (Decoder): Added code 14 (string='AA')
+LRU Map state (Decoder): {8=25, 9=20, 10=17, 11=26, 12=23, 13=16, 14=27, 15=18}
+LRU Eviction (Decoder): Removing code 13 (string='BC', timestamp=16)
+LRU Eviction (Decoder): Added code 13 (string='ABCBC')
+LRU Map state (Decoder): {8=25, 9=20, 10=28, 11=26, 12=23, 13=29, 14=27, 15=18}
+LRU Eviction (Decoder): Removing code 15 (string='ABC', timestamp=18)
+LRU Eviction (Decoder): Added code 15 (string='CABC')
+LRU Map state (Decoder): {8=25, 9=20, 10=28, 11=26, 12=23, 13=29, 14=27, 15=31}
+LRU Eviction (Decoder): Removing code 9 (string='BCA', timestamp=20)
+LRU Eviction (Decoder): Added code 9 (string='CA')
+LRU Map state (Decoder): {8=25, 9=33, 10=28, 11=26, 12=23, 13=29, 14=32, 15=31}
+LRU Eviction (Decoder): Removing code 12 (string='BCAB', timestamp=23)
+LRU Eviction (Decoder): Added code 12 (string='AAA')
+LRU Map state (Decoder): {8=25, 9=33, 10=28, 11=26, 12=35, 13=29, 14=34, 15=31}
+LRU Eviction (Decoder): Removing code 8 (string='BA', timestamp=25)
+LRU Eviction (Decoder): Added code 8 (string='AAC')
+LRU Map state (Decoder): {8=37, 9=33, 10=28, 11=26, 12=35, 13=29, 14=34, 15=36}
+LRU Eviction (Decoder): Removing code 11 (string='ABCB', timestamp=26)
+LRU Eviction (Decoder): Added code 11 (string='CABCB')
+LRU Map state (Decoder): {8=37, 9=33, 10=28, 11=39, 12=35, 13=29, 14=34, 15=36}
+LRU Eviction (Decoder): Removing code 10 (string='CAB', timestamp=28)
+LRU Eviction (Decoder): Added code 10 (string='BC')
+LRU Map state (Decoder): {8=37, 9=33, 10=41, 11=39, 12=35, 13=29, 14=34, 15=36}
+LRU Eviction (Decoder): Removing code 13 (string='ABCBC', timestamp=29)
+LRU Eviction (Decoder): Added code 13 (string='C
+')
+LRU Map state (Decoder): {8=37, 9=33, 10=41, 11=39, 12=35, 13=43, 14=34, 15=36}

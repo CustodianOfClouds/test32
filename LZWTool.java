@@ -141,21 +141,37 @@ public class LZWTool {
     }
 
     /**
-     * Updates LRU tracking when a pattern is used.
-     * Assigns the current timestamp to the used pattern to mark it as most recently used.
-     * Only tracks patterns added to dictionary, not initial alphabet entries.
-     * Higher timestamp values indicate more recent usage.
-     * 
+     * Updates LRU timestamp when a pattern is used (for encoder).
+     * Assigns current timestamp to mark as most recently used.
+     * Higher timestamp = more recently used.
+     *
      * @param LRUMap map tracking pattern -> timestamp
      * @param usedPattern the pattern that was just used
-     * @param lruTimestamp current timestamp counter
-     * @return updated timestamp counter
+     * @param timestamp current timestamp value
+     * @return updated timestamp (incremented)
      */
-    private static long updateLRUEncoder(Map<String, Long> LRUMap, String usedPattern, long lruTimestamp) {
+    private static int updateLRUTimestamp(Map<String, Integer> LRUMap, String usedPattern, int timestamp) {
         if (LRUMap.containsKey(usedPattern)) {
-            LRUMap.put(usedPattern, lruTimestamp++);
+            LRUMap.put(usedPattern, timestamp);
         }
-        return lruTimestamp;
+        return timestamp + 1;
+    }
+
+    /**
+     * Updates LRU timestamp when a code is used (for decoder).
+     * Assigns current timestamp to mark as most recently used.
+     * Higher timestamp = more recently used.
+     *
+     * @param LRUMap map tracking code -> timestamp
+     * @param usedCode the code that was just used
+     * @param timestamp current timestamp value
+     * @return updated timestamp (incremented)
+     */
+    private static int updateLRUTimestampDecoder(Map<Integer, Integer> LRUMap, int usedCode, int timestamp) {
+        if (LRUMap.containsKey(usedCode)) {
+            LRUMap.put(usedCode, timestamp);
+        }
+        return timestamp + 1;
     }
 
     private static void compress(int minW, int maxW, String policy, List<Character> alphabet) {
@@ -194,8 +210,9 @@ public class LZWTool {
         }
 
         // LRU/LFU tracking structures
-        Map<String, Integer> LRUMap = new HashMap<>();//??
+        Map<String, Integer> LRUMap = new HashMap<>(); // String -> timestamp
         Map<String, Integer> LFUMap = new HashMap<>();
+        int lruTimestamp = 0; // Timestamp counter for LRU
 
         // now let's start compressing!
         // raw binary data is piped in during actual execution, so we start reading from BinaryStdIn
@@ -229,13 +246,15 @@ public class LZWTool {
                 // Pattern exists - extend current pattern
                 current = next;
 
-            } else { 
+            } else {
 
                 // Pattern not in codebook - output current and add new pattern
                 BinaryStdOut.write(dictionary.get(current), W);
 
-                // Update LRU/LFU tracking structures here
-                // Update LRU tracking when outputting???
+                // Update LRU timestamp: mark current pattern as recently used
+                if (policy.equals("lru")) {
+                    lruTimestamp = updateLRUTimestamp(LRUMap, current.toString(), lruTimestamp);
+                }
 
 
                 // log into dictionary, if space available
@@ -248,8 +267,12 @@ public class LZWTool {
 
                     // There's space in the dictionary - add new pattern
                     dictionary.put(next, nextCode++);
-                    
-                    // Update LRU tracking structures??
+
+                    // Add new pattern to LRU tracking with current timestamp (will be marked as used when needed)
+                    if (policy.equals("lru")) {
+                        LRUMap.put(next.toString(), lruTimestamp);
+                        lruTimestamp++;
+                    }
 
                 } else {
                     // Dictionary full - handle according to policy
@@ -282,7 +305,36 @@ public class LZWTool {
                             break;
                         case "lru":
                             // Find the least recently used entry (smallest timestamp)
-                            
+                            String lruPattern = null;
+                            int minTimestamp = Integer.MAX_VALUE;
+                            for (Map.Entry<String, Integer> entry : LRUMap.entrySet()) {
+                                if (entry.getValue() < minTimestamp) {
+                                    minTimestamp = entry.getValue();
+                                    lruPattern = entry.getKey();
+                                }
+                            }
+
+                            if (lruPattern != null) {
+                                // Get the code that will be freed
+                                StringBuilder lruSb = new StringBuilder(lruPattern);
+                                int freedCode = dictionary.get(lruSb);
+
+                                System.err.println("LRU Eviction: Removing pattern '" + lruPattern + "' (code=" + freedCode + ", timestamp=" + minTimestamp + ")");
+
+                                // Remove the LRU pattern from dictionary
+                                dictionary.put(lruSb, null);
+
+                                // Add new pattern using the freed code
+                                dictionary.put(next, freedCode);
+
+                                // Update LRU tracking: remove old pattern, add new with current timestamp
+                                LRUMap.remove(lruPattern);
+                                LRUMap.put(next.toString(), lruTimestamp);
+                                lruTimestamp++;
+
+                                System.err.println("LRU Eviction: Added pattern '" + next + "' (code=" + freedCode + ")");
+                                System.err.println("LRU Map state: " + LRUMap);
+                            }
                             break;
                         //case "lfu":
                         //    // Evict least frequently used entry
@@ -302,6 +354,11 @@ public class LZWTool {
         // Output final pattern if any
         if (current.length() > 0) {
             BinaryStdOut.write(dictionary.get(current), W);
+
+            // Update LRU timestamp for final pattern
+            if (policy.equals("lru")) {
+                lruTimestamp = updateLRUTimestamp(LRUMap, current.toString(), lruTimestamp);
+            }
         }
 
         // idk why we need this check, but without it the code breaks so fuck it
@@ -332,8 +389,10 @@ public class LZWTool {
         }
 
         // LRU/LFU tracking structures
-        Map<Integer, Long> LRUMap = new HashMap<>();//??
-        Map<String, Integer> LFUMap = new HashMap<>();
+        // For decoder, we track code -> timestamp (not string -> age)
+        Map<Integer, Integer> LRUMap = new HashMap<>(); // code -> timestamp
+        Map<Integer, Integer> LFUMap = new HashMap<>();
+        int lruTimestamp = 0; // Timestamp counter for LRU
 
         // best data structure for decompression dictionary is an array
         String[] dictionary = new String[maxCode];
@@ -359,6 +418,11 @@ public class LZWTool {
 
         if (current < h.alphabetSize) { // should be in initial dictionary
             BinaryStdOut.write(dictionary[current]);
+
+            // Update LRU timestamp for first code to stay in sync with encoder
+            if (h.policy == 2) { // policy 2 = LRU
+                lruTimestamp = updateLRUTimestampDecoder(LRUMap, current, lruTimestamp);
+            }
         } else {
             System.err.println("Bad compressed code: " + current);
             System.exit(1);
@@ -428,13 +492,26 @@ public class LZWTool {
 
             BinaryStdOut.write(s);
 
+            // Update LRU timestamp when outputting a code
+            if (h.policy == 2) { // policy 2 = LRU
+                lruTimestamp = updateLRUTimestampDecoder(LRUMap, current, lruTimestamp);
+            }
+
             // Add new entry: previous string + first char of current string
             // Use StringBuilder instead of string concatenation for efficiency
             if (nextCode < maxCode) {
                 // string concat: dictionary[nextCode++] = valPrior + s.charAt(0);
                 StringBuilder tempSb = new StringBuilder(valPrior.length() + 1);
                 tempSb.append(valPrior).append(s.charAt(0));
-                dictionary[nextCode++] = tempSb.toString();
+                dictionary[nextCode] = tempSb.toString();
+
+                // Add new code to LRU tracking with current timestamp
+                if (h.policy == 2) { // policy 2 = LRU
+                    LRUMap.put(nextCode, lruTimestamp);
+                    lruTimestamp++;
+                }
+
+                nextCode++;
             } else {
                 // Dictionary full - handle according to policy
                 switch (h.policy) {
@@ -446,10 +523,35 @@ public class LZWTool {
                         break;
 
                     case 2: // lru
-                        // Evict least recently used entry
-                        // Find LRU entry (smallest timestamp, excluding alphabet)
-                        // alphabet isnt added because we have an if statmemnt to repvent that
+                        // Evict least recently used entry (smallest timestamp)
+                        int lruCode = -1;
+                        int minTimestampDecoder = Integer.MAX_VALUE;
+                        for (Map.Entry<Integer, Integer> entry : LRUMap.entrySet()) {
+                            if (entry.getValue() < minTimestampDecoder) {
+                                minTimestampDecoder = entry.getValue();
+                                lruCode = entry.getKey();
+                            }
+                        }
 
+                        if (lruCode != -1 && lruCode >= h.alphabetSize) {
+                            System.err.println("LRU Eviction (Decoder): Removing code " + lruCode + " (string='" + dictionary[lruCode] + "', timestamp=" + minTimestampDecoder + ")");
+
+                            // Build new entry to add
+                            StringBuilder tempSb = new StringBuilder(valPrior.length() + 1);
+                            tempSb.append(valPrior).append(s.charAt(0));
+                            String newEntry = tempSb.toString();
+
+                            // Replace the LRU entry with the new entry
+                            dictionary[lruCode] = newEntry;
+
+                            // Update LRU tracking: remove old, add new with current timestamp
+                            LRUMap.remove(lruCode);
+                            LRUMap.put(lruCode, lruTimestamp);
+                            lruTimestamp++;
+
+                            System.err.println("LRU Eviction (Decoder): Added code " + lruCode + " (string='" + newEntry + "')");
+                            System.err.println("LRU Map state (Decoder): " + LRUMap);
+                        }
                         break;
                     //case 3: // lfu
                     //    // Evict least frequently used entry

@@ -1,0 +1,3081 @@
+ 
+C++ Programs from Algorithms 2nd edition
+ 
+Copyright 1992. Addison-Wesley Publishing Company, Inc.
+All Rights Reserved. 
+ 
+ 
+--------------------------------
+CHAPTER 1 Introduction   
+ 
+ 
+--------------------------------
+CHAPTER 2 C++ (and C)
+ 
+#include <iostream.h>
+int gcd(int u, int v)
+  {
+    int t;
+    while (u > 0)
+      {
+        if (u < v) { t = u; u = v; v = t; }
+        u = u - v;
+      }
+    return v;
+   }
+main()
+  {
+    int x, y;
+    while (cin >> x && cin >> y)
+      if (x>0 && y>0) cout << x << ' ' << y << ' ' 
+                                << gcd(x,y) << '\n';
+  }
+ 
+--------------------------------
+CHAPTER 3 Elementary Data Structures 
+ 
+const int N = 1000;
+main()
+  {
+    int i, j, a[N+1];
+    for (a[1] = 0, i = 2; i <= N; i++) a[i] = 1;
+    for (i = 2; i <= N/2; i++)
+      for (j = 2; j <= N/i; j++) 
+        a[i*j] = 0;
+    for (i = 1; i <= N; i++)
+      if (a[i]) cout << i << ' ';
+    cout << '\n';
+  }
+ 
+    struct node 
+      { int key; struct node *next; };
+ 
+    struct node *head, *z;
+    head = new node; z = new node;
+    head->next = z; z->next = z;
+ 
+struct node 
+  { int key; struct node *next; };
+main()
+  { 
+    int i, N, M; 
+    struct node *t, *x;
+    cin >> N >> M;
+    t = new node; t->key = 1; x = t;
+    for (i = 2; i <= N; i++)
+      { 
+        t->next = new node;
+        t = t->next; t->key = i;
+      }
+    t->next = x;
+    while (t != t->next)
+      {
+        for (i = 1; i < M; i++) t = t->next;
+        cout << t->next->key << ' ';
+        x = t->next; t->next = x->next;
+        delete x;
+      }
+    cout << t->key << '\n';
+  }
+ 
+    key[x] = v; next[x] = next[t]; next[t] = x++;
+ 
+class Stack 
+  {
+    private:
+      itemType *stack;
+      int p;
+    public:
+      Stack(int max=100) 
+        { stack = new itemType[max]; p = 0; }
+     ~Stack()
+        { delete stack; }
+      inline void push(itemType v)
+        { stack[p++] = v; }
+      inline itemType pop()
+        { return stack[--p]; }
+      inline int empty()
+        { return !p; }
+  };
+ 
+    char c; Stack acc(50); int x;
+    while (cin.get(c))
+      {
+        x = 0;
+        while (c == ' ') cin.get(c);
+        if (c == '+') x = acc.pop() + acc.pop();
+        if (c == '*') x = acc.pop() * acc.pop();
+        while (c>='0' && c<='9')
+          { x = 10*x + (c-'0');  cin.get(c); }
+        acc.push(x);
+      }
+   cout << acc.pop() << '\n';
+ 
+    char c; Stack save(50);
+    while (cin.get(c))
+      {
+        if (c == ')') cout.put(save.pop());
+        if (c == '+') save.push(c);
+        if (c == '*') save.push(c);
+        while (c>='0' && c<='9') 
+          { cout.put(c); cin.get(c); } 
+        if (c != '(') cout << ' ';
+      }
+    cout << '\n';
+ 
+class Stack 
+  {
+    public:
+      Stack(int max); 
+     ~Stack();
+      void push(itemType v);
+      itemType pop();
+      int empty();
+    private:
+      struct node 
+       { itemType key; struct node *next; };
+      struct node *head, *z;
+  };
+ 
+Stack::Stack(int max) 
+  {
+    head = new node; z = new node;
+    head->next = z;  z->next = z;
+  }
+Stack::~Stack() 
+  { 
+    struct node *t = head;
+    while (t != z) 
+      { head = t; t = t->next; delete head; }
+  }
+ 
+void Stack::push(itemType v) 
+  {
+    struct node *t = new node;
+    t->key = v; t->next = head->next; 
+    head->next = t;
+  }
+itemType Stack::pop()   
+  {
+    itemType x;
+    struct node *t = head->next; 
+    head->next = t->next; x = t->key;
+    delete t; return x;
+  }
+int Stack::empty()
+  { return head->next == z; }
+ 
+void Queue::put(itemType v)
+  {
+    queue[tail++] = v;
+    if (tail > size) tail = 0; 
+  }
+itemType Queue::get()
+  { 
+    itemType t = queue[head++];
+    if (head > size) head = 0;
+    return t;
+  }
+int Queue::empty()
+  { return head == tail; }
+ 
+ 
+--------------------------------
+CHAPTER 4 Trees   
+ 
+    struct node
+      { char info; struct node *l, *r; };
+    struct node *x, *z;
+ 
+    char c; Stack stack(50);
+    z = new node; z->l = z; z->r = z;
+    while (cin.get(c))
+      {
+        while (c == ' ') cin.get(c);
+        x = new node;
+        x->info = c; x->l = z; x->r = z;
+        if (c=='+' || c=='*') 
+          { x->r = stack.pop(); x->l = stack.pop(); }
+        stack.push(x);
+      }
+ 
+traverse(struct node *t)
+  {
+    stack.push(t);
+    while (!stack.empty())
+      {
+        t = stack.pop(); visit(t);
+        if (t->r != z) stack.push(t->r); 
+        if (t->l != z) stack.push(t->l); 
+      }
+  }
+ 
+traverse(struct node *t)
+  {
+    queue.put(t);
+    while (!queue.empty())
+      {
+        t = queue.get(); visit(t);
+        if (t->l != z) queue.put(t->l); 
+        if (t->r != z) queue.put(t->r); 
+      }
+  }
+ 
+ 
+--------------------------------
+CHAPTER 5 Recursion   
+ 
+int factorial(int N)
+  {
+    if (N == 0) return 1;
+    return N * factorial(N-1);
+  }
+ 
+int fibonacci(int N)
+  {
+    if (N <= 1) return 1;
+    return fibonacci(N-1) + fibonacci(N-2);
+  }
+ 
+const int max = 25;
+int fibonacci(int N)
+  {
+    int i, F[max];
+    F[0] = 1; F[1] = 1;
+    for (i = 2; i <= max; i++) 
+        F[i] = F[i-1] + F[i-2];
+    return F[N];    
+  }
+ 
+rule(int l, int r, int h)
+  {
+    int m = (l+r)/2;
+    if (h > 0)
+      { 
+        mark(m,h);
+        rule(l,m,h-1);
+        rule(m,r,h-1);
+      }
+  }
+ 
+rule(0,8,3)
+   mark(4,3 )
+   rule(0,4,2)
+      mark(2,2)
+      rule(0,2,1)
+         mark(1,1)
+         rule(0,1,0)
+         rule(1,2,0)
+      rule(2,4,1)
+         mark(3,1)
+         rule(2,3,0)
+         rule(3,4,0)
+   rule(4,8,2)
+      mark(6,2)
+      rule(4,6,1)
+         mark(5,1)
+         rule(4,5,0)
+         rule(5,6,0)
+      rule(6,8,1)
+         mark(7,1)
+         rule(6,7,0)
+ 
+rule(0,8,3)
+   rule(0,4,2)
+      rule(0,2,1)
+         rule(0,1,0)
+         mark(1,1)
+         rule(1,2,0)
+      mark(2,2)
+      rule(2,4,1)
+         rule(2,3,0)
+         mark(3,1)
+         rule(3,4,0)
+   mark(4,3 )
+   rule(4,8,2)
+      rule(4,6,1)
+         rule(4,5,0)
+         mark(5,1)
+         rule(5,6,0)
+      mark(6,2)
+      rule(6,8,1)
+         rule(6,7,0)
+         mark(7,1)
+ 
+rule(int l, int r, int h)
+  { 
+    int i, j, t;
+    for (i = 1,j = 1; i <= h; i++,j+=j)
+      for (t = 0; t <= (l+r)/j; t++)
+        mark(l+j+t*(j+j),i);
+  }
+ 
+star(int x, int y, int r)
+  {
+    if (r > 0)
+      {
+        star(x-r,y+r,r/2);
+        star(x+r,y+r,r/2);
+        star(x-r,y-r,r/2);
+        star(x+r,y-r,r/2);
+        box(x,y,r);
+      }
+  }
+ 
+traverse(struct node *t)
+  {
+    if (t != z)
+      {
+        traverse(t->l);
+        visit(t);
+        traverse(t->r);
+      }
+  }
+ 
+visit(struct node *t)
+  { t->x = ++x; t->y = y; }
+traverse(struct node *t)
+  {
+    y++;
+    if (t != z)
+      {
+        traverse(t->l);
+        visit(t);
+        traverse(t->r)
+      }
+    y--;
+  }
+ 
+traverse(struct node *t)
+  {
+    if (t != z)
+      {
+        visit(t);
+        traverse(t->l);
+        traverse(t->r);
+      }
+  }
+ 
+traverse(struct node *t)
+  {
+   l: if (t == z) goto x;
+      visit(t);
+      traverse(t->l);
+      t = t->r;
+      goto l;
+   x: ;
+  }
+ 
+traverse(struct node *t)
+  {
+   l: if (t == z) goto s;
+      visit(t);
+      stack.push(t); t = t->l; goto l;
+   r: t = t->r; goto l;
+   s: if (stack.empty()) goto x;
+      t = stack.pop(); goto r;
+   x: ;
+  }
+ 
+traverse(struct node *t)
+  {
+   l: while (t != z)
+        {
+          visit(t);
+          stack.push(t->r); t = t->l;
+        }
+      if (stack.empty()) goto x;
+      t = stack.pop(); goto l;
+   x: ;
+  }
+ 
+traverse(struct node *t)
+  {
+    stack.push(t);
+    while (!stack.empty())
+      {
+        t = stack.pop();
+        while (t != z) 
+          {  
+            visit(t);
+            stack.push(t->r); 
+            t = t->l;
+          }
+      }
+  }
+ 
+traverse(struct node *t)
+  {
+    stack.push(t);
+    while (!stack.empty())
+      {
+        t = stack.pop();
+        if (t != z) 
+          {  
+            visit(t);
+            stack.push(t->r); 
+            stack.push(t->l);
+          }
+      }
+  }
+ 
+traverse(struct node *t)
+  {
+    stack.push(t);
+    while (!stack.empty())
+      {
+        t = stack.pop(); visit(t);
+        if (t->r != z) stack.push(t->r); 
+        if (t->l != z) stack.push(t->l); 
+      }
+  }
+ 
+ 
+--------------------------------
+CHAPTER 6 Analysis of Algorithms 
+ 
+ 
+--------------------------------
+CHAPTER 7 Implementation of Algorithms 
+ 
+ 
+--------------------------------
+CHAPTER 8 Elementary Sorting Methods 
+ 
+inline void swap(itemType a[], int i, int j)
+  { itemType t = a[i]; a[i] = a[j]; a[j] = t; }
+sort3(itemType a[], int N)
+  {
+    if (a[1] > a[2]) swap(a, 1, 2);
+    if (a[1] > a[3]) swap(a, 1, 3);
+    if (a[2] > a[3]) swap(a, 2, 3);
+  }
+const int maxN = 100;
+main()
+  {
+    int N, i; itemType v, a[maxN+1];
+    N = 0; while (cin >> v) a[++N] = v;
+    a[0] = 0; 
+    sort3(a, N);
+    for (i = 1; i <= N; i++) cout << a[i] << ' ';
+    cout << '\n';
+  }
+ 
+void selection(itemType a[], int N)
+  { 
+    int i, j, min;
+    for (i = 1; i < N; i++)
+      { 
+        min = i;
+        for (j = i+1; j <= N; j++) 
+            if (a[j] < a[min]) min = j;
+        swap(a, min, i);
+      } 
+  }
+ 
+void insertion(itemType a[], int N)
+  { 
+    int i, j; itemType v;
+    for (i = 2; i <= N; i++)
+      { 
+        v = a[i]; j = i;
+        while (a[j-1] > v) 
+          { a[j] = a[j-1]; j--; }  
+        a[j] = v; 
+      } 
+  }
+ 
+void bubble(itemType a[], int N)
+  {
+    int i, j;
+    for (i = N; i >= 1; i--)
+      for (j = 2; j <= i; j++)
+        if (a[j-1] > a[j]) swap(a, j-1, j);
+  }
+ 
+void insertion(itemType a[], int p[], int N)
+  { 
+    int i, j; itemType v;
+    for (i = 0; i <= N; i++) p[i] = i;
+    for (i = 2; i <= N; i++)
+      { 
+        v = p[i]; j = i;
+        while (a[p[j-1]] > a[v]) 
+          { p[j] = p[j-1]; j--; }  
+        p[j] = v; 
+      } 
+  }
+ 
+void insitu(itemType a[], int p[], int N)
+  { 
+    int i, j, k; itemType t;
+    for (i = 1; i <= N; i++) 
+      if (p[i] != i)
+        {
+          t = a[i]; k = i;
+          do
+            { 
+              j = k; a[j] = a[p[j]];
+              k = p[j]; p[j] = j;
+            }
+          while (k != i);
+          a[j] = t;
+        } 
+  }
+ 
+void insertion(itemType a[], itemType *p[], int N)
+  { 
+    int i, j; itemType *v;
+    for (i = 0; i <= N; i++) p[i] = &a[i];
+    for (i = 2; i <= N; i++)
+      { 
+        v = p[i]; j = i;
+        while (*p[j-1] > *v) 
+          { p[j] = p[j-1]; j--; }
+        p[j] = v; 
+      } 
+  }
+ 
+void shellsort(itemType a[], int N)
+  { 
+    int i, j, h; itemType v;
+    for (h = 1; h <= N/9; h = 3*h+1) ;
+    for ( ; h > 0; h /= 3)
+      for (i = h+1; i <= N; i += 1)
+        { 
+          v = a[i]; j = i;
+          while (j>h && a[j-h]>v)
+            { a[j] = a[j-h]; j -= h; }
+          a[j] = v; 
+        } 
+  }
+ 
+for (j = 0; j <  M; j++) count[j] = 0;
+for (i = 1; i <= N; i++) count[a[i]]++;
+for (j = 1; j <  M; j++) count[j] += count[j-1];
+for (i = N; i >= 1; i--) b[count[a[i]]--] = a[i];
+for (i = 1; i <= N; i++) a[i] = b[i];
+ 
+ 
+--------------------------------
+CHAPTER 9 Quicksort   
+ 
+void quicksort(itemType a[], int l, int r)
+  { 
+    int i;
+    if (r > l)
+      { 
+        i = partition(a, l, r);
+        quicksort(a, l, i-1);
+        quicksort(a, i+1, r);
+      } 
+  }
+ 
+void quicksort(itemType a[], int l, int r)
+  { 
+    int i, j; itemType v;
+    if (r > l)
+      { 
+        v = a[r]; i = l-1; j = r;
+        for (;;)
+          { 
+            while (a[++i] < v) ;
+            while (a[--j] > v) ;
+            if (i >= j) break;
+            swap(a, i, j);
+          }
+        swap(a, i, r);
+        quicksort(a, l, i-1);
+        quicksort(a, i+1, r);
+      } 
+  }
+ 
+void quicksort(itemType a[], int l, int r)
+  { 
+    int i; Stack<int> sf(50);
+    for (;;)
+      {
+        while (r > l)
+          { 
+            i = partition(a, l, r);
+            if (i-l > r-i)
+              { sf.push(l); sf.push(i-1); l = i+1; }
+            else
+              { sf.push(i+1); sf.push(r); r = i-1; }
+          } 
+        if (sf.empty()) break;
+        r = sf.pop(); l = sf.pop(); 
+      }
+  }
+ 
+void select(itemType a[], int l, int r, int k)
+  { 
+    int i;
+    if (r > l)
+      { 
+        i = partition(a, l, r);
+        if (i > l+k-1) select(a, l, i-1, k);
+        if (i < l+k-1) select(a, i+1, r, k-i);
+      } 
+  }
+ 
+void select(itemType a[], int N, int k)
+  { 
+    int i, j, l, r; itemType v;
+    l = 1; r = N;
+    while (r > l)
+      { 
+        v = a[r]; i = l-1; j = r;
+        for (;;)
+          { 
+            while (a[++i] < v) ;
+            while (a[--j] > v) ;
+            if (i >= j) break;
+            swap(a, i, j);
+          }
+        swap(a, i, r);
+        if (i >= k) r = i-1;
+        if (i <= k) l = i+1;
+      } 
+  }
+ 
+ 
+--------------------------------
+CHAPTER 10 Radix Sorting  
+ 
+class bitskey 
+  {
+    private:
+      int x;
+    public:
+      bitskey& operator=(int i) 
+          { x = i; return *this; }
+      inline unsigned bits(int k, int j)
+          { return (x >> k) & ~(~0 << j); }
+  };
+typedef bitskey itemType;
+ 
+void radixexchange(itemType a[], int l, int r, int b)
+  { 
+    int i, j; itemType t;
+    if (r>l && b>=0)
+      { 
+        i = l; j = r;
+        while (j != i)
+          { 
+            while (!a[i].bits(b, 1) && i<j) i++;
+            while ( a[j].bits(b, 1) && j>i) j--;
+            swap(a, i, j);
+          }
+        if (!a[r].bits(b, 1)) j++;
+        radixexchange(a, l, j-1, b-1);
+        radixexchange(a, j, r, b-1);
+      } 
+  }
+ 
+void straightradix(itemType a[], itemType b[], int N)
+  {
+    int i, j, pass, count[M-1];
+    for (pass = 0; pass < w/m; pass++)
+      {
+        for (j = 0; j <  M; j++) count[j] = 0;
+        for (i = 1; i <= N; i++) 
+            count[a[i].bits(pass*m, m)]++;
+        for (j = 1; j <  M; j++) 
+            count[j] += count[j-1];
+        for (i = N; i >= 1; i--)
+            b[count[a[i].bits(pass*m, m)]--] = a[i];
+        for (i = 1; i <= N; i++) a[i] = b[i];
+      }
+  }
+ 
+ 
+--------------------------------
+CHAPTER 11 Priority Queues  
+ 
+class PQ
+  {
+    private:
+      itemType *a;
+      int N;
+    public:
+      PQ(int max) 
+        { a = new itemType[max]; N = 0; }
+     ~PQ()
+        { delete a; }
+      void insert(itemType v)
+        { a[++N] = v; }
+      itemType remove()
+        {
+          int j, max = 1; 
+          for (j = 2; j <= N; j++)
+            if (a[j] > a[max]) max = j;
+          swap(a, max, N);
+          return a[N--];
+        }
+  };
+ 
+void PQ::upheap(int k)
+  {
+    itemType v;
+    v = a[k]; a[0] = itemMAX;
+    while (a[k/2] <= v)
+      { a[k] = a[k/2]; k = k/2; }
+    a[k] = v;
+  }
+void PQ::insert(itemType v)
+  { a[++N] = v;  upheap(N); }
+ 
+void PQ::downheap(int k)
+  {
+    int j; itemType v;
+    v = a[k];
+    while (k <= N/2)
+      {
+        j = k+k;
+        if (j<N && a[j]<a[j+1]) j++;
+        if (v >= a[j]) break;
+        a[k] = a[j]; k = j;
+      }
+    a[k] = v;
+  }
+ 
+itemType PQ::remove()
+  {
+    itemType v = a[1];
+    a[1] = a[N--];
+    downheap(1);
+    return v;
+  }
+ 
+itemType PQ::replace(itemType v)
+  {
+    a[0] = v;
+    downheap(0);
+    return ]; a;
+  }
+ 
+void heapsort(itemType a[], int N)             int i
+  {
+    int i; PQ heap(N);
+    for (i = 1; i <= N; i++) heap.insert(a[i]);    
+    for (i = N; i >= 1; i--) a[i] =Q .remove();    
+  }
+ 
+void heapsort(itemType a[], int N)
+  {
+    int k;
+    for (k = N/2; k >= 1; k--) 
+        downheap(a, N, k);
+    while (N > 1)
+      { swap(a, 1,  heap d
+    donheap(a, --N, 1); }
+  }
+ 
+class PQ
+  {
+    private:
+      itemType *a; int *p, *info;
+      int N;
+    public:
+      PQ(int size)
+        { a = new itemType[int se]; 
+          pa ew intType[ize];
+          info = ne = na e[i]; N = 0; }
+     ~PQ()
+        { delete a; delete p; delete , *i; }
+      void .i(int x, itemType v)
+        { a[++N] = v; p[x] = N; i      ino[N] = x; }
+      void change((i, itemType v)
+        { a[p[ p[x}
+      i
+      int remove() // remove smallest
+        {
+          int j, min = 1; 
+          for (j = 2; j <= N; j++)
+            if (a[j] < a[min]) mj, mi= j;
+          swap(a, min, N); swap(, *iswap(a,n, N);]; 
+[iN; i [min]] = min;
+          return , *i[N--];
+        }
+      int emptyQ(temType v)
+ return (N <= 0); }
+  };
+ 
+PQ::      PtemType *array, PQ(iize) 
+  { 
+    int k;
+    p = new itemTypeintTze]; q k;emType = new ite]; 
+         { a= atemType *aray; N = [i; 
+    for (k = >= 1 <= N; k++) { p[k] = k; q[k] = k; }
+    for (;
+    for (kN/k /2; ; k--) ) 
+   hek);
+  }
+ 
+void PQ::d d
+heap(int k)
+  {
+    int j, v;
+    v = p[k];
+    while (k <= 2; /2)
+      {
+        j = k+k;
+        if (jN & && a[p[j]][j]<[p[j+1]]) j++;
+        if (a[v]>=& aj]]) break;
+        p[k] ;
+    v =j];  = kp[j]]{ p[; k = j;
+      }
+    pq[ v;  = kv]p[j]]{
+  }
+ 
+ 
+------
+-------
+
+--------
+
+
+--------
+CHAPTER 12 Mergesort   
+ 
+i = 1; j = 1;
+a[M+1] = itemMAAX b[NM+= i = ittem;
+for (r (k; k <= a[MN; <=+)
+  cq[ (a[i]<b[j]) ? a[i++] : <b++];
+ 
+struct node
+  { itemType key; 
+ 
+sct node *next; };
+y; 
+t ct ne *z;
+ 
+y; 
+tuc n *merge(y; 
+tunode *a, struct node *b)int i
+N)
+  {    struct nuc *c;
+    c = e *zow
+      if (a->key <= b->keyze)    { c-> *nt = a; c = a; a = a-> ext; }
+      elsode       {     { c>c- = b *ntc- ; bc- ; a nex; }
+    hile (kile (; c!= z);
+    c
+    c c- ;extz
+    c c
+    c ;
+    return c;
+k);
+  m *mesort(itemType a[], int l, int r)
+  int i
+N   int i, j, k, m;
+    if (r > l)= 2; /    m = (r+l)/2;
+        merg *mert(a, l, m);  
+        m m sort(a, m+1, r= 0)
+        for (i = m+1; i > l; i--) b[i-1] = a[i-1Type[iN);r (j = m; j < r; j++) b[ = (rm-j] = a[j+1];
+        for (r = l; k <= r; a[MN)
+          a[k] = (b[i](a[i[j])  ?b[<= N; i] ++] :[j--];
+      }
+  }
+ 
+ergruct nu
+        Merort(}
+ 
+enoduc *)
+  {
+     Meroe *a, * = b
+    if (       {      { c>!= z)l)=   ; 
+      c; b = c
+    c c = c
+>c-> e;
+        while (c- ;       {             { c c;>c-; a n bbc>c-;t
+    c cdelete ,  c- ;= ct
+ cz
+= z;
+        return ergre(ergresort(a), m;  
+ort(b) r=      }
+0);
+ rn rn }
+ 
+struct node *ergresort(}trstru
+yruct nuc)
+  {
+    int i, N;
+N)
+  { ort(}t;
+ 
+ynodu Meroeb, *head, *todod,;
+    head = newort(}t;ed,;ead cz   ; a z
+=
+    for (N = 1;      { a!= ;
+    h= ctN =  b[NN) 
+      {
+        todo = hd,;ebc>b o =ad;
+        while (, *to != z)
+          )
+  i          t = t    {
+  = a;= ext
+            for (i = 1; i < N; i++) t = t->c-;
+            c- ;= t-> t = tc- ;= -> e
+    c c
+ t =  = b 
+            
+            f; i < N; i++) t = t-bc>b
+            ;
+        whil = t->c = c
+> t = tcnex
+    c c
+
+            
+    ifc- ;= -= m m (a, b);
+                     
+ i <= 2; +< N; c  c+) t          }
+      }
+    ;
+    rurn      { a!; c  }
+ 
+ 
+---
+-------- 
+---
+-------------
+
+
+-
+ER3 Enexernal Sorting  
+ 
+ }
+ 
+ ----------------------------
+--
+
+
+- 14 Elementary Searching Methods 
+ 
+class Dicst  {
+    private:
+      uc *)
+        { itemType key; iN; i 
+        { ipe , *i;t; ;
+      uc *) *a;}
+      i
+t N; N;
+blic:
+      Dict(int max)
+        { ; 
+      = nct ne[max]; N = 0; }
+     ~
+      Dt()
+        {     { dete anex;];
+     foType search.i( = itType v r=      voi voidnsert(itemType v, in];
+     fype , *iv };
+, *iType ~
+::foTearh(itemType v) () / Sequential struct node *b 
+    (i = N+1;
+    a[0].key = v; ]; aheap.N; i  = iN; i NIL;
+    
+    hle (v != a[-- p[x0].ke) ;
+    }
+      }rn a[a[--, *i;int i
+}
+     vid Type ~:i voidnrt(i.i( ype vert(oType ype , 
+  { a[+= 2; +]..k
+    pqa[N]., *iheap.Nfoe an
+class ~
+
+          )privatvate
+     :
+       { itemType e k in, in]N; i 
+N; i ; 
+         strsct node * t-> 
+         ct ne(itemType k,e k ype ve];
+     fy, struct node *n)
+           { ]..k; iN; i  = i;uc
+    ifcucxt       };
+     struct node *;
+    h, * = e  {
+  
+    pue:     ~
+.i(nt max) /2;
+{
+         zpa = n
+         citemMX;ert(oNIL, 0v        ;
+    h = new 
+         c0NIL, z);
+       }
+         ~ss D()min;};
+,ype ~
+:arc:
+ pe  = itTmin;void insnseitemType vert(ooTN; i ); 
+        }
+in, in]Ne      vi};
+,yearhitemType v) ///Sorted list struct node *b
+    struct node *t = ;
+    hILhile (v > t->keyzN; i++) t
+
+    ret;
+    run (v = t->k0].kb[j t->, *ih: c- ;e>a[ac;
+k     vid .nseik,eert(oofo) /st   struct node *xd,struct node *t ead= p[ (v > = c
+> t->k0y) t = t-b t = t
+    x fo =newo(vert(o,  = tnexoTN    ert(o,t = x;
+  }
+ 
+()mpe e  Se~
+:a.i( ype  (itemType v)//Binary seseah l s
+    int l = 1; iNt r = N1; t = x    wILhe (r >= ;
+    if (r       {
+       1;  = (l+r)l)/        if (v == a[a[-- > t}
+      }rn rn a
+    pqaN; i 
+N
+        if (v <  a[= a[av = te (r= x-1;  }
+    int 1; (i b)    return , *iX;e;
+  }
+ 
+ 
+c s ~) /s pri   p:
+     ; 
+rN)
+  { oct neuc *)
+temType itemTy 
+(e c- ;e>         struct node *l, *r; 
+          pa temType iitemType vee k y 
+               st; 
+r
+ 
+scruct numal, strsct node *temType *ar)
+            { ]..k; iNnf i; l = ll; r = temType *arxt ucx;
+  N;
+N st *;
+    h, *, *  = e blic   p:e: int .i(n
+        {    z
+    x
+         c 0Nk,eX;e
+         c0
+         c );
+                 ;
+        {   n(itemMIN,  0 0NIL, }
+     }
+     ct();
+      itemTy inafoTeh(;
+      min;v:i emType vtemType ii in,ert(oofX;e;;
+ 
+ct()pe e sesh( 
+  {int i
+  st; 
+r
+, st*x f h= hdr;
+    : c].. j, vN, ke (
+    hle (r=
+      if0].k
+      , st*(v < = x<= bv = t ?(v l : (v r;
+    return (v  
+(e}
+ 
+void a[ac voidnrt(itemType vtemType ii e cN; i ) 
+  {iN;
+N   st;p, * t  {
+  d,sb o{
+       1o =ad->r;
+    ;
+    
+e (x c- ;      { 
+          pe (r=; 0].k
+
+        if (v1; 
+      if0 = c
+> t0].kbv = t  l :->r; }
+    , st*; 
+      =
+        {   :i ek,e, z, z);
+    if (; 0p1; 
+) ; 0p>l 
+          pe -1;  1; 
+)r = , * (v   
+c ss D::treeprint(strsctnewo *x, int r) = b
+ (x c= z)
+            {treeeint(x->l);
+        print
+         c *x;
+        
+       
+        pt(: ();
+      }
+  }
+ 
+void T(v   :.re(itemType v)   st s 
+  {iNtrsctnuc *, *N;
+N  newo dodr;
+1; 
+ = v;
+    p t de (r=; = v;
+l :- j, vN (v != (v keyz= z)
+ p = x t da[k] =; 0 !<= bv
+        if (v1>(v l  : (; }
+    t 
+          pe = b
+ (t->= a[av= z)b o{ !<l;
+    -1;  ;
+        i ((t->l        if (v  z) { x 
+    hle>, *r = c
+> t0    {
+  ->l; }
+     }= z)
+
+        +< !<, *r;
+    
+e (       {  l->l != z)          {   c+ !<l
+        , st*       {  l *nt(t- {r;
+        , *r  t->l; : (;
+        whil e (r=; b)    )
+        {  te t; = b
+ (f (;p1 p       {  l 1; ; 
+          pe ->r = x 
+  }
+ 
+ 
+ 
+---
+- }
+ 
+ -
+------
+CHAPTER 15 Balanced Trees  
+ 
+void T(ct::d .ntemType vt(itek,eize)t = t-b  = v;
+; pt = t-b   g {
+       1ostruct node *t e(x e (x    { 
+        gg {t = t-b   ; ggp; pt; 0p>  c+  = ( t da = b
+ (f ?((t-:  !<,N; i ;        if (v = t ->c- ;&& : (v = t -) split(v);
+      }
+r;
+      = new 
+, st*;(ve 1:i ek        if (v  , z,l :- < 1; 
+) > t1; 
+)l = x; ; 
+
+    hle>->r     sspt(:
+ p heao =ad
+    hle>v = t -c- lack;
+  ;
+      }
+  }(stct ne *tot         )pch.emType vt:
+     ;N)
+  { ocruct nu = c
+> tst s    struct node *c, *grn r  
+        +, st*(< y = b
+ (f  < y>l :  <r;
+    if (; 0       {  keyz=      { gr c l;        {  l = grl :-t = t-b          {  r = c;N = 0;    ; }
+     keyz= 
+        +t = t-b     *nt(x; ;=  = g
+        if (v1>t = t-b   ;       {  l = c; }
+    r;
+    i <  < > t <l = gr1; ;lse :  l;  rn rreturn gr1: ()d s->r  h(ruct nu >(v = t -c= rrtee (r=;->l>(v blacke (r=;- heao>c-;black;
+    if (1; 
+)b)i >= ;
+        g>(v rede
+        r;
+    i<g1; 
+ != v<1; 
+) v = t     { 
+ rott 
+        {   :g);
+      >( = rotttenewo(t = t-b   
+        {   :g;
+        (v >c bl = j;
+  }
+ 
+      e: int max)
+        { 
+             z
+= i;u = n
+
+        {   
+         c ert(oNN; i N, blackX;e
+, 0;
+          : cl = e *z        if (v  
+          pe -z
+=
+                    z
+=fo =nitemMINX;e
+blackX;e
+ 0 
+        }
+ 
+ 
+- 
+---
+-  }
+ 
+ -
+------
+APTEER6 Hashirtin 
+ 
+unsignrte:
+     ;ingkey::hash~
+.t Mx,    int h; chae (r*t = ]..     for (h = 0; *t; t++)r;    h = (64*h + *t) % M;t
+
+urX;e;
+ 
+     vi      et sz)h l    M = s, *  , 0;r;
+      de; : c    { c>z
+=e *z >aN; i  = , *iXN; i Nedads        ;
+de*[M];
+    for (   i = 0; i < M; <= N; ik--   {t(:s[i], 0;rort(}t;e{t[i]ead l = e}
+  ;
+  }lass 
+c sct
+  {
+    priri 
+      u;
+      }
+  }( nct neuemType uc *)
+tkey;];
+     fyN; i 
+N++)r    
+         ck+ key = " "]..k;odok,eX ,c;N      };
+      u;
+      }
+  }( ;
+ 
+yn;
+      int M;t    pu = e bblic     ~sPQ(iz)
+        { M = t s = a;=        = nc[Mdelete ,PQ(ie  S     vi}temType v)h(;voi semin;v:mType vtemType vtype ,t
+       int i
+N nt , st*v.::hearht MN; i ;          while (a[a[--,N; i  != i = iNN; i N) 0].k
+x+1t)) %;
+          n r p[x0y key =[while (a[a; iNn, *i;t 0 
+;
+ 
+vo
+        }
+
+ 
+ 
+- -------------
+C
+CHAPTE7 Radix() /  sesing  
+ 
+X;e;;
+  }
+ 
+voi};
+,ye(itemType vpe  ( 
+c sgital    ,Trsz 
+             emType vt:nodu, st* = ;l s
+c-;itemType::max*     
+    :ey = v; j, vN , st*(!= (p1
+      ,; 0p> .bits(b--, 1))   !<, l= z)b
+    c ;eturn (-> 
+(e}
+ 
+int i
+}}
+ 
+void
+  }
+ 
+voiinsert(     vidct()Type vt) /s struct node *uc *,*xt = t-b  , st* +1]  ncypeitemType:axmax*   while (x c=:i ek 
+      { 
+        v = t x;   c+  a[k] =;; 0p> .(b----,0].kbv
+          pe -v = t   = g
+ 
+      }
+(v)s  ort(}t;et = t-b 1; 
+ = v;  retu>aN, *i;t, *r  l = el; :
+          pe -zint i
+N );
+    ifa[k] =;;bsort(a, 1)) ;        if (v  
+       {  l 1 -1; ;lp1 >l 
+       {  l 1
+  }
+ 
+X;e;;
+id T(c:
+  }
+ 
+voi}earhiitemType v)  Patricqueita::te cNsz ;
+  N int *newo ;
+    p  gb o{ rn   !<l
+    wIile (;
+    i > ;
+        ()
+         {l);
+ = x  
+        0].k
+bits(
+        {   :;
+        (--,0 t da x; ;0].kbv
+l; >c int i
+N )l :- != (p= x<
+      if0    r!= i L; Mn  retu>heap.Nfgr1:lass tct: voidnrt};
+,ye(rt(i.nseikuc *)
+tkert(oof
+  {
+    ) /s sd,p,ck;nt    i = mypei int *nt(:*t; = v;
+l = g
+ v; il>    ,&& :
+     { p;
+        whil  int *nta[k] =bits(
+,  v = t -;
+        (- t->e (r:  t= c;);
+    if->l t->k0y)  > t}{
+       1osbits(t->k0y, i, 1)->l  int *ntaN; i  = --,0l; iypei  = ; gb= hdb o{ r   wt = x  (pv = t -c v; i;
+        (  ->c (pvN; i  = k--  z= z)
+ ; 0p> 
+        0its(0].k
+bv = t -; 1))-- t da x l= ,c    ,[i],;
+    t->k0y = v; t->, *ih= iN; i 
+N+t->c-;i[i],; p (b 
+        0ibits(
+, heao>,  vx :  c-;i[ *nt(x ( 1)-t->c,  vt l :ck;f ( 1)-;
+    i--,0-1;  1{ p;       {  l 1 se -1l = t;   }
+ 
+ng  ;
+ 
+vo
+---------
+C
+ 
+ 
+- -PTER8 3 Etetural y S() /  rtin
+ 
+ 
+----------------------
+--------  }
+ 
+ -
+PTER 19 String y S(foTe sesi
+ 
+int brute
+  }
+ 
+voi}int h *uc *,int h emType *Mxint i
+N nt i, j, M =:
+     ;len(psort(a) N       { Mtrlen(a);
+    ;
+    f]; N t i]; N ; j < M && i < N; i++t i++)e *zo (a[i] (v k] ;]
+         ck   i -= j-1; j = = j-= c;) (1; j= t M(v rrn i-M; e1; ;lp   rurXx;
+nt kmputhachaeuc *,iuthuc *) emType *M     it i, M =:strtrlps, N = sN  e:
+     ;l(ad,pitc-n();
+    ;or (ck;n
+        {   
+ 1; j
+         c ]; N ;i (jN&    i for (i = 1 < N+; i++)
+      while ((j >= , 0 &&  cq] != p[j]
+) jpanex[j]; = b
+ ( (1) %t->k0y)etut M(-rn iM; e) %tn i   ru
+ind,pi-> e( *ups
+  {
+    int i,ck;n
+t i,, N rstrt);
+    c-
+    a[] = = =
+    a)= 0t i]j =1; i < M; <= N; i; i++, c-
+i] = j+)hile ()
+      w >) && n(t(:s!= p(a[i[]
+)= nepan[j  }
+ 
+int kmmpPQ(ie-> e(uthuint h eps
+ = ] = =sm: <= N; i;
+s0smf (a[c-
+i!= '1') goto ] = =s < N+<= N; i;10sf  &&  = '0')t = t-b   oto s0; : <; };
+20sf cq]a[i]  != ''0) gtooto  < N+<; };
+3; };
+2e *zo  (a[c0'1'')ts1; i++<= N; i;4; };
+2et(:s! &&  =e *zo  t = t-b   otoos2oto  s54;c-
+i! &&  ='11''toos s0++;
+s64;cf   ! &&  ='e *zo  tgos1+<= N; i;764 cq]aa[i]  '11gosoto         r-8   ru
+, c] = && ni] = (v k, 1))c-
+j] : j
+ 
+int misint hpuar
+  }
+ 
+voi}i,  *u(a
+  {
+    emType *M  j, ti,c      { Mtrs = sNitcps,i,c trl:
+     ;l(
+    initskip(ps];);
+    ;o = M= j-a)=) %-1; j  v; i s0s(ck;n
+--+)h !<l
+ e (3;i] = ype ,t         t = itssk]; 
+[dex cq])M]
+          i*h a[k] =);
+    ;o ) %-    ,, 1))a[k] =) !<, = e          if (   i >=  b[NNreturn t i, N          1);
+    ;o 1;
+t
+ }
+    ;eturn ,m);  }
+ 
+consint i
+N ntnt q = 33554393;
+coon int d = 3s2
+int rkint hphac,  PQ(ie- *u() /s (a
+dM =:1, h1;
+    f] h12= 0d,p~
+.tt i,,, N rps,ij, Mrs i,c t]..  ];) l =; ii  < N+) (a
+d = (d*(a
+dt))qps]r (or (c s0; iiN; i  = t+ }=t
+ 1, = (1,d*+insk], c]p[j] % t))q
+        h;
+    f]  (t))q
+1,d+iexx (a
+dt;
+      k; }i,c t]1; j
+ hh1!= ;s2; iiN+;t+ 0vh;(t))q
++ = (dq-+iedexa[i])d*1; j=% t;
+        t))q
+ = (12t))q
+1nins--) a+[Msort(a, 1p[j]   ]) jf (i > Nt M(-t->k0y)eretn return t    t
+ }retnN; i  =    ru
+ 
+;
+ 
+vo
+- = x 
+ }
+ 
+ -
+P---------
+C
+ 20 Pat3 Etn Matrcng  
+ 
+;
+cst PQ(ican = ]1;
+   p:eMaearh
+  }
+ 
+voi}i,)
+  {
+    ent n1, nh1!D Seue dq(10    retuMxick;n
+1;ayN  ee:(ples         )p) jpt1);
+    c;
+    ue.    pt(sPQ(icn);
+    hI !<l
+ e ((plte
+  }
+ 
+voi}i,) >= ;
+ !<,N !<l
+ e  *tote =      { MsP
+         ckj1; i+ dque.int b(s      { Mse an       ;
+    -f ( hType[ *tote]->l a[j]) 
+            ) dq    pt(c-t1 ((e]g)       {  l 1 se c;
+    -ff ( h         )pa[++N] &&  = !struct node *n<= N; ik
+            nt n         )p)c-tType[ ]; nh         )p)2;
+    -ffte)M          
+           qush~nt n); if (
+            n!= nh) (  ) uqus2e]g--];      if ();
+    c;empty() ||ck;n
+=    i >eturn 0; 
+        t1  = );
+    c;pop();
+      }
+r(i beturn j;
+l = t
+ 
+ 
+ 
+;-----------;
+ 
+vo
+- ER 2h1Parsirtin 
+ 
+expressi  }
+ 
+cptyQk--   
+    3 Etmss D( = b
+ (] !->l '+'0(v kj++;  expprss:
+     ;l); }
+  }
+ 
+ 
+    3  }
+ 
+cp         ) fc-;btorms    if (&& nj] = &&  =('0() | let3 Etf (&sk],  }
+ 
+ v }
+ 
+ fctoc-;bt)
+  {
+    if (1[j]ss D(  &&  =()
+        }
+ 
+cp     j++;   eesprsrm       )
+  {
+    i&& nj &&  = '0    j1; ;lper = roc(a
+dt;
+           ; (le0 er3 Etf  ]'0 { p; 1; ;lpectoesp   f ( = b
+ (]=  !* &&  = '++;
+  }
+ 
+j++;  resi  }
+ 
+ch(  
+    3
+       fctor
+         (
+           }
+ 
+jprsbc>b
+erm
+               
+       cto   A   *m
+  i )M           
+e (r  B
+            +
+            
+          resin*m    ,ermn*
+             fc
+       c  Aermn   *    ,ei ) = b fc
+   
+e C
+         )
+        it
+            DAe 
+bad
+            +si v   }
+ 
+cp if (le0et3] !3 Etf j1N = 0;             { 
+bsk]
+ 
+e  ee
+          rctoe            )         )pa !'+sP
+j1sk],       { Mse      -1;  { p; 1 = rol; >}
+: jt ad
+ss:l sstruct node *b nt ) jpt,t2, h=oTN h1    {
+  ermss D( r;
+        whil 1;
+t>c i3 Etfss D(  !'++)r      {j++; t1  &&  = '+       ,t, N          )p; r = ,t; j++; ts1+   i >eett1 
+          pe 2, ! !, t a(),  1);
+        setett,t= j-a2, 'ruct num         )p'r(pltoc(oto   eturn ,  }
+ 
+int sk], 
+  {
+    int  j, t r;) ;
+ =         
+          rcif (1;
+t> = b
+ (]='ss D(   '0(if (l0 eet3]) t;
+        whil h1 );
+    return eturn ,}
+ 
+int  =  c)    ,1, ,t, r;
+    ) jpt,t,tet l (pif (1[1;
+t> ss D(  ; iiN+      
+         ckjs1+    ,h; !,e]g      ss D( )* 
+         ckjs      -temType *ar1; ;lpecp()(v kj1; ;lp  }
+ 
+cp i leif (l0!= p(++)r s1+ 1);Type[ nt(ruct num  p[j]         )p'esort(a, j++; t,  1
+        t1        { Mt, N  ck;n
+j1; j;
+      }
+  p()('0 {      -t{ p; 1 ms t l jf   ' !*t->k0y);
+        whil h1!j1NN)        ;
+        settt1 , ' ! ; 
+         )psort(a, ,te]gr = t1 ; (c[) jpt= j-] = r = t
+              {jType[        ,return t ) ;
+oto   e   ru
+int i
+}} m   p:eMall-> e(uar
+int h ep    }
+ 
+cp  10; 
+        t];) 
+    ; (0] = s1+ ;
+    j1NN1);T 0t1 ,2, '= i;unext10]; i++,-> enext]
+s1+ ;   i >ee1);Tettt= j-a2X;e
+,);
+    while (int h e coint b << m   p:eMlen(t+ <= j-a2earhtrn r  cot t+ '\n'   ru
+ ;
+l--;
+l-
+------;
+l-
+---------------
+ 
+ 
+- -PER }
+ 
+ -
+P-12Fn);Cox;
+nexpp
+          r)   
+  fops]r = 0; iint b = 26i  int h e unt[i] =1; j
+int i
+)    (r (o l =; <  M; <t+coi  i]; 
+[d1,d+dexa] &&  = '+1; j
+i;
+      kor (c <int b =26s2; &&  =()>c i3t+cnt[i]) ; dq
+  }
+ 
+voiinset+cnunti], iv for ( ; !p dq);
+    c;eptermsit i+       ; h=o = p .remove()*t;h;p ..rmo)*;
+      dadt(:s= 0d dda) jpt] = n i= 0d d(c[2
+    a[]n i
+      untiadtint h e u>c i3tda)*h adtiunt,tte)ctoe f (; !!px;
+n);
+    c;ep  ]p . dq
+rt-> e( co>c i3tnset (pvNrn r   }
+ 
+for (k = 0; for (kor (c < }
+ 
+ -
+P-int b =2kit z
+    i = 0; , st*0;  1;
+        whil 1esp , *r;-> e( untk]
+ 
+    3
+or (t=;
+      d= 0d duntk*t;*t;t= dd]; i+=ji],ki      if-1;  ; < >= ,   {x += j;
+        whil   -ext}
+  earhtrde[untk   {llende[) jpt]   ru
+for (  }
+ 
+cp  ]; N ;i< M]; N ;i],k         ) ;
+      k   {llq-len((a[i[]; i > j  -s2;     t+c cot< (rt-earhtrd   {llq->l a]
+] > v; ii-1)(jN 1);
+ 
+N; i  =  ----------------------
+
+--------ER 2ER23 CrTytology expp
+
+ 
+N; i  =  -----------------------
+
+C
+ 
+ 
+- -PEER 2E 14ElememeCr GeCoetatrchihods 
+ 
+struct pvont    {(i, y *ntuthur = c}<= N; i;(stedne    {
+ 
+sct );
+    c;pint p1, ph1!};
+e  t int pnt );
+    c;ply) gn[Nmaxte)
+int ccwnt(; 
+r
+,uc);
+    c;pi 0   i >e(stt ie  t1,  0 nt(;e  t1 p12c-;bt)nt dx1, nt d
+          pe 2dy1, nys2
+    nt doTN h p1.x - p01.; 
+          pe 2dnt doct ).y x -p01 *ntu
+    x1 h=o 21.;
+        whil   -  p0 d1, nyx1 ct ).1.;x -pct ).tet(    nd* d1 v; i1.;d*xqus2 return 1; (>c i3( 
+          pe 2d12<  v; i1x1Nturn ] = ={ p; 1 m< (>c i3(d*x < >) '0(tet(dyd* ( 
+
+         c0
+x1Nrn urn ]>c i3tet(dx1.;d1(ttet(d1.;)  cot<x11.;d21(2t
+          pe 2d1  ]            *          return eturn 1  return 0;       {  l 1
+nt  ntersect(};
+e line l1, ct(}(steinequs2
+  {
+    return < (int ccwe lue.1, cwe1, p, l h=o 2ct ) !s    uc *
+i(e luue.1 p1cwe1 ll qus2)  = 0 !s&& return <uc *
+, l1, c1, p,l q1, p,ue.1 1)
+                uint ccl ue.1l q1 lue.1  ll = 0; ii
+         c0
+   ru
+ftolat    ,hetawnstrue  tvont ieruct num 0 ne  tve  t1  =  cnt d, 
+          pe 2d, ax
+          pe 2d, *ntu
+]..     ru
+ftt t;     nt d1, nyx.xoTN h -  ax = ab.bitsnt de()01 y ke  t1 x1 cy x p1 *ntu ae  t1 x = aab = c
+> t[i],; = (ax+ a->l >= , ? 2: (f]..   ) (y/len(x+ a.bitsn] = ={1, nyx.< >= ,t = 2-el = g{ p; if (
+          pe 2d < >)    ,[= 4+t teturn 1 eturn t*901  r = j;
+ urXxnsisideaw
+ 
+sc 0 ne
+  {
+    int  ct(}nt(;ep[];coosort(a)  =  c
+  {
+    int iunti1;for ( 
+    strN)
+  { oct(}( l j, tl; g
+    p);
+    c h=o n[]; nt(;epN+1] = nt(;ep1unt,  lt1, c-1;  1{  lue.h;ext-1;  1{ 1, p21= INT_MAXqp)     = 1; i = 0; ii
+N;26sss D(  ;      l 1, c= nt(;epi];       1, p);
+    c nt(;epi
+      esp ,(!intersect( l ,  lsort(a, 1
+          {
+            ;  *t;h[j]]; N ;i= i;
+    
+  }
+ 
+voi}i,) (!irntet(ct( , ) unti
+         ucx
+      ext}(v rrn 
+  {
+    int iu& 1' 
+-------- = x 
+ 
+;-----------------------
+
+CHA---------
+C
+ 2ER 112Ft))q
+1ning t    ,h = b f  }
+ 
+covx Humal}
+: wrap(p 0 nent(;ep[]int Nsort(a)  , mint i,];]..   at ,  = ]
+             or (, mn = 0tN; i  =  ];) = 0tN   i fN;2ki , c]px1 c, z,l[or (,]ct ).) or (, = n i
+int M h=o n);
+    c [o*t;h]; N .01  = ]
+r (M =:0; M = 0tN M]; N ;iint h ep    i >ewran(t i,sort(a)  ,inv       ) o=  = 0; ii
+Nv;
+        whil h[o* = 3690(i be)M  ;
+      kM]1; i <) o=i  
+          if (ing teta&& n[M, = n]
+ > v !s >c i3f (i *toing te[], =)  at v     {       )t
+ }rat =  eta&nt(;ep&& n[ruct num  [o:
+     ;l)de
+f (      )) o=
+         c0
+xn M69       ,r  }
+ 
+int gwrhamt(sann(p(p p[i],nt int Nint i
+{
+    int  t i,snint= =
+
+             oin)     i], = h1!&  1; i <)   i fNte)ct l i]N;2k&& n[rinor (,]
+      if0       )tor (, r (Mqp)N; i  =  h1!&sort(a) ) o=i, c]px, =x1 c = b
+ (]=nt(;ep[o]c:
+     ;l)dt l ior (,]x  v; i = b
+ (]=n&& n[ri1.ct ).)
+             oi]; N ;i=
+    s   i >ewp(p, 1, or (,);
+    she1lsctot(uc *,int N;
+    nt(;ep; (01, c= h=o nAX(M =:3)     i    ,[= l =;k  = 0; ii
+NM; <26ss    while, *r;uc *
+eta&n *toi*[= j-][M,nt[(j )  =a)=)-;
+        M]
+         ckjs
+    swruc *,
+  {
+    int it MNl; >t teretnNM;t  }
+ 
+;
+ 
+N
+ 
+N }
+ 
+ -
+ 
+;--
+CHAER 2EER6Range ing ycHangmal}wratre(int v1, atrequs2
+int h ep qus2 retnNmal}wangc-;bt    ,had->rat ,1, vqus2; }
+int mal}wa0 ect(}n n +p[it int vp[it 1, v)
+  int i
+{Mxictdx,  d*x,  -> e( u]; N t
+    i
+          if ]= z)ext}(i] =1oTN dx = (t->key >= int v);
+    Mxict0vht->key = 0; ii
+p[it 1.;xMxicti-1
+  {
+    int iux + rRa0 e t->raat ,vq
+    i
+-1;  ;oTN d&& );
+    M, )-> e( uunti
+i
+          ifd*x);
+    M,i  i
+          i*x + wrac-;btt->r0 e  1at ,v'r(retnNunti   ru
+class ER6Rwraint Ni
+    priv         )p:ri 
+r 
+             ee 
+           {
+    staw
+);
+    c;pi,t;   {
+ t ct(}nde *ednnexqus2;      };ri 
+rct ct ne *t gi= 0d dmaxG], z,l[axmaxGqus2; r  *e *z
+    pu edc         )p:      s Eang
+          rc  vh(;v ini s.    i >e(p(p );
+       nt searcH(rect int mv };
+      se::;
+ ()
+  {
+    enint i
+N ntt i;
+    z = ednw t c, 0;ro= =
+
+fopt(:s=h1!&s= 0d dmsort(a) )     ) jpt]  = 0; ; j   i =xG< M]+;t          *t= 0d di] (pi        if (v  urXint i
+}} ;
+ lass tsert( 0 ne
+.  wrai
+ nt(;ct ct =  = e t n:  cp h=o *t;->; :t = t-b   ri= 0d dp1./size][= 0d dp) (y/se];
+              *e][p1) (y/G][=1./isiz] = t   ru
+int int i
+}} ;id T(c:e sesdeat rerset r rR) //Cr t = t-b   r metchihdfor ( 
+)
+  i0 ecn ; *int i
+(a
+j, 
+  {
+    int iu= 0d &&  = '+1= =
+
+f
+          i*xang1.1[=1siz)     i = int m1.21[, 0;ro = 0; ii
+NM]..  ]r ( 1= idy21  }
+ 
+cp  ])     i = rRct ).1.2) (y/G<)
+      for (t = /se= 0d dij];    ,[!    { c>zt = t->c- !s-> e( uu)    nst giert re
+          pe ->p,t,t r d*x)nt       ,         rurn 'r(rint i
+}
+  ;la ;
+ .  w   
+ 
+eirivtec      0 ecnct(}nd 
+             ee:
+     ;N)
+  { oct(}n);
+    c;pi,
+ n)
+  i0l, *rnexq:rN)
+  { oct czl,c-;bt dmaxGq    stac-;bt)numm
+          pe 2d, ctoe nt sid T(c:ercHc-;bt     0e *t,   ]    ct(}rec rR)wraint vpd);
+        pbu etec    ;
+ (p(p ) 1vhp . i s.vont);
+    c;pip(p ) [Mde ct(}r= =
+
+f
+ev }; 
+(e}
+vh   ru
+ivhp sesd; 
+r
+,uint pnType vp2Dqueie;
+ .  c-;bt  *fd,; ic-;bt)n,  c-;bt dt c, (d1;t = ypei  t != l = ed1= 0d dijint vpd
+              tt dd1 ?n(21< t->= 0d dpx) (f[= < < t]c;
+        smf    {
+  = j;   t  ? t !<, =->r; j; < >) = i;uednww  h=o *>:  cp1, c=w  l = l = ec-;bttl p[it 1int vpd         ) ->w  lsmf g) int vpd >e (rsmf 'r(rimal}   ru
+i   nfoTevhp = =
+
+f
+ect i ) / }
+ 
+ -
+P-2Dtr::tl sd*x)nrn    ru
+i cHch;(id T(c:edad-ct(}r=, 1)qus2;3s Rawra::};
+,yerc(stnt(;c*t,                      ct read-c];c= 0d diji z
+);
+      *ntu
+]1, ,
+          pe 21.;xMdx,1, ,
+dy,  1, ny,  d
+          ifd
+  {
+    int iu=
+      ect ct ]=) o=
+ext}(i    ,oTN d  }
+ 
+cp  ])wra1.1[= 
+          pe --  );
+    M;
+        whil [= 
+x k = id*x69ptnt do 1=h121<[= 
+ p1 pt  lu p1 p = 0; ii
+ 1=ysc) t1   ? ext}(i h1:  dyvec) t  >c i3(dh1: 1=yif () jptt r dt 
+  {
+    int iux::}t re
+>
+ n)t rea!int vpd69if ( )    ndect(}r::}tuc *,ct i) jptt       , 1=yixqi-1
+      { Mnt si   ru
+i cc-;btt->pwrai (v !iint i
+return rn 'retnNMrtin
+-----------
+-------- ;
+l-
+-
+
+ 
+N HA-7Cr Gelemtric Int  n!irt re
+          r) 
+ 
+Dict X2Dte([Nax(pYct X(e([= 0d dpx}<nt(;N)
+  { occt(}(sn[Nm;
+cc,  -
+  {
+    int iu=   iInrn
+          r.bits1, v)
+    int td dx,1 d*x,td 
+          pe 2N;c-;bt dtct X()      *nt
+             oi] >dx,1 h1 *nt
+dy(j v = t -c 12h1 h1!nt(;epN< M]+N = 0;   
+        N)
+  { occ h=o n1, c21=] >di]; lict(}(sNor (,]nt doce  t1 x:  dN = 0;   
+21=]N)
+  { occ -1;  1{ 1x = = id};
+e edn licNo h=o 2nt doce 1=y      Ycree.   ru
+iv duc *,i]c:( d1!= dy) nt doce ::te.nsert(1, ny,coos->r;) nreetraovnt  n!
+          rcint i
+r-> e( u69}
+ 
+  vt gi  
+Dct::visit
+  }
+ 
+voi}i,) (temTTye vp[ifomTpe cnert(oof
+]; N ;ii{
+  *ntu
+], t t d d1, ny;
+        ,o};
+e ees]; 
+[foNo p1x;  *nt
+d= 
+        Nin]; 
+[f1, c2m
+  >c i3(d *nt
+d=N = 0;   
+2
+        Nio licN-   d1>c i3(d = id}es]
+        Nioue.hx -pc = b
+ (>c i3(d< dx)    {t = = =1, c2mi]; ] >d-1;  1{
+      eif ( d1< dy)k--  t = 1, ny;d*x,t = :  dtd nt do - = b
+ ( = 0; ii
+Nv = b
+ (]=< d
+        X2Ycr::tesert(t t *nt
+d=N);
+    if ( = b
+ ( = 1, ny)
+              
+        Xnt doce :p ..ov(sert(te cnoe]gxqi )
+       reeint mov(1, );
+    M,i;
+      }
+   }   ru
+ ;-----------
+
+-------- ;
+l-
+-
+H----------------------
+
+CH;
+ 
+vo
+- E8 Ctolseles-P 0 neP = rbuems  
+ 
+;
+cx;
+nvhp nt(;c1, v)z)en(}
+  ;l = b
+ (]=i-1  ;
+        whil [ :   p1 p, 1)q  c*lemrs Ea, 1)q a, , 1)q b)
+  {
+    , 1)q c; 
+    tric ]=;
+    uo
+    
+      eco;
+cx(a < 
+    
+p(a,) ct(}nd c*t;--> eax  *nt*t;-- *ntu ax c*ednnrtin
+-      { Mse lsqueiet
+    {ct(}nd c>c- = bax  = c-  b = bax cnt do 26ss     we (trict !);
+    c;        if (v   = ba; z = ba = l) ;
+oretnNuunti     ,hckvhp ct(}nl1   i >e(p);
+    c;piqus2
+iad-c]
+             ];]dis] = t = b
+ (n(y x  cq]a; z h=o *>]c, 0 -1;  1{ 1y t ! p1 p  ls            {];]dst       { Mq dq
+ris]1.-x =)d1.-x dq
+ri h=o 2= 0d dpx  ] +1.-y1.-x]c*+1y1 = c
+> t !,e--]; di < 1, osort(a, 1
+ mct ).)
+ ddi *ntct ) h=o n 
+ c      11, c=ph);
+    M,i;s 
+nt(;c*)
+  i0slscx;
+nv)
+  i0cint vpnt iert(oof
+]      is1+ ;nt(;c*)ct(}nd*, 1)q a *c- = =
+];], mddle   isi s.vint pnp1
+          pe 2pM =:3 p4;
+    if (   {c; :ct ct int h ep q         ru(v rrn;
+    a = , 1)q cN;c   i int b =siz)sort(a) / = h++, )a         if (v   
+    b =    {c;-> e *ntz tric ] !-}
+  ;l int b =1.c, mdhilax  =;
+        whil [;
+    );
+    c*lrssl*,Nsort(a) /), 1)q bslb, i > Nct X(Nssort(a, 11.;xp] !-} }
+ 
+ -
+P-1, ny)
+         *ntc ]=
+          pe -;  c  = ba; h=o *>
+          pe -;3  *ntc ;  M =:3 l  ]=
+
+        for (;
+    ab =; ;
+    at !b =;c*ect(}nd c>-> ev if ( fb.len(  ;x -];],dde cdi v  
+                  {      cHersecka
+          pe -[M,
+        t                c    ,hcb.l h=o *>[M, 1a   *       c cHea
+ p32e        *      ,hcbuc *,p42e int M
+          pe 2dnh1! = ba; 
+          pe 2p h=o *>
+ h=o  p4l  = cka;  
+            
+      e      turn  = ,  }
+ 
+z =  e= i;ue t  c  t->= = max
+    t          y x  (f[=  c  t c  ->; *e*t;hz =e=de; h-> e qus2 adedlesms      )t c  t
+1.;xpresct X() hh-)
+  i0s dq
+r; hc*ecnex, i.bitsn
+1s N;c ct X() c*ecn         tsl)
+  i0s c-nex, 1); }  = x 
+    ru
+ ;-;
+l-
+-------- ;H-ER 2E9  14Eementary Gwrp*t;hAl) griing thambuent V, E
+    tint a[maxVG]a[mmaxtint i
+}} adj<<tridexrn
+]; N ;ii{ck;n
+{
+  (i,;
+        whil [;
+             oi] v; iVdy(ER 2E9 h=o nA, st* h=o n[= 
+x= V; x+nt(;epN< = 0; ii
+NM] (e  t1 x h=o ny k [= 
+x=td t+a[xG]y] = .0  for ( h=o nA,V; = 0; ii
+k [; x) t+aG]a[xct X()N;cj hh = 0; ;dy(E      { Mt,x+nstruct node *n<t
+ c;
+        whil [;
+ 1dx,1 h v; i1, v;
+        , st*   {llq= ix; = nt))q
+1n1,d+ = 0; ii
+p
+        ) t[G]y hha[G]y[G]a
+        t]      }
+  }
+ 
+c-;bt l satrect(}n)ct cz)
+  i0c-rnint nt Vdy(E
+s Ea,dj],xmaxVl, *e 
+maxtis Ea,dqus2 at(<<t    nt j, x{
+  ( , 1)q +t cc; v; iV *nt
+, E
+      }
+ 
+z < >) = = e e=d  y x   c  -];or (N;cj=  h=o n hh k [      
+; x)s Ea,d[t l j = ba  = 0; ii
+NM] (0;  21  = 0; ;dk [ int vpd
+
+        struct node *n<tn  *nt
+int vVd v; i1
+        ;
+        , = ntdex   {llq=td x; sk](t))q
+1n1t
+ t = t =ednww 
+  t
+ t-> = b
+ ( dx,1 w  ->;adj) t[]b =;; x)sG]y e (rst
+ t;
+    z=  e < >) = e;
+           *t
+ t- = :dx,1 w-> eal  =; x)sa[x]bdj
+        t]     ,1, c=p *e vh};
+,ye 
+    3 1, v)
+ k h=o nAfor (kN; i  =   = 0; f= V;  }
+ 
+ -
+P-i+) rivllend = unse 14Eek  hhN; i  =    k [;  ) c, c]px) rlend  = b
+ (]=se ::tn) 1it
+t(k  }
+ 
+ v
+        t]  69}::vsit(int k ct i //DFS
+          pe 2d,s Ea,dc-;b 14Eecy s Ea,dqs
+  {
+     ,;
+    ) rluntk = ++t gi h=o nAt = ->;a;
+      d=j]; ! );
+    M;c*ecn )
+      );
+    ial(c[t
+ t-       )  = b
+ (]=s 14Ee+) 1i::}t > vurX  }
+ 
+ v
+d169}:isisiterset//DDFS
+js Ea,dcn 14Eec   ru
+idexr
+  {
+     }
+ 
+i ,;);
+    iauntk =*h +++tN;ct =  h=o n cot = 0; f=    ,t+)
+f (a[untk(c[] != 0c*ecn )t
+ 
+      )rivlt] lend  e.n = b
+ (]=s n) ::vs
+          pe t(k
+S *to    ,hc         )ps           a[m.bitsnint i
+}} d16t(int int k )ct(}nn-rec         rusiovt gi //DD *ntu s Ea,d};
+e less Ea,dqsnt iee;s1+ ;n     0e, 1)q +lesc-;bkue.ush(k ;
+    whihilesp ,(, 1)q +l    ,hc. dq)y()] !-} t
+  h=o nAf         )ps c-;bk);
+    c;pp(e() 1 ,;)] = = +,  c)
+       or (tax ; x)s->;a;ypei  tj]; !    {
+   = ba)
+      ] = ={) rlt->vt
+ t- lend  e::tn
+          atreqesp ,(,         )ps cue.uh 1i:p(e] = ={)(c[t = = j-, 1)q[Gmal}  
+Que 
+Q q 
+Q 
+Q(           a;
+a[m.+) isisk c Bt gi /adjjsn y ss
+e;s +;
+     queree    pit
+tX;e
+,)26ss   (!uer 
+Q    ,hc.!px dq)y  ls < M]+N] !-} t = !ureeangt(<; ;
+    ) 1 *h += +,(i be)r ( h=o nAtax ;]; ->;a;y (pi ; j; t = tenex-> evf (p(e]>t->v->l        )  lend  e:          atreq] !-} t kut() rlt 1i:p);
+    ia) rlt
+    a[] h=o n}
+, 1)q[  }
+ 
+;
+ 
+N
+ = x 
+  rn 'r;
+l-
+PT---------------
+ 3 2n);Cnednct
+ 
+eiitgyhamb +pa[m.+t(inType vpct i /S    ,o         ) ind1artDiHuati  }
+ 
+c sesd;1);y ssN)
+  { ocnt(;c*)cextint i
+ z
+) mnt  t }
+ 
+i rivl);
+    iau] = = (pvNr
+      if0  *h +=.0 cto      if--> ealdj; x)s- (v ypei  tj    ,    {
+   t+) (f (p>t== ->l  ;  )       )
+  it
+ m = int i
+}} dh e;N; i  = f ( e cd::tnms h eif (t
+ my >e()  }
+ 
+i r= n]    tint b < nalemsh(p(p )   r      e1l = g{p(e]> 1i:p)] = ={)(< mv  sort(a, 1
+ , mny >eal(-> evf) t[]retnNuuurn or (,unti cl1.;xprEQ
+  {
+       
+ir      se)
+nt d*adint N;
+    puDiu et   1.;xprE
+  }
+ 
+voi}i,) (nt s1./ie c;
+      int f         ) i1.;xprE
+
+    intint vpy rR)wvotv };     
+ 
+int 1.;xprE::1./iet))q
+1n         ) i1dx,1 
+    intiy itnt(;c1 
+    3 1   i i         ) i1dck;n
+t
+ t- 
+    ;
+    wih=;t(:s v; i>= , 
+    3 1 ih=);
+    c nax cnwhie (ih=[tt(:s )  1e (i1ue;Nt c,  rR)wv(jN&&   i != j  ] 1e = n;
+    l sdn 
+  }
+ 
+voi}i,) ( cq]a!= jt nt int 1:::1dt))q
+1n j, x];cint vpy= 0d diji  rR)wvitnrn
+]
+  {
+    int   
+    3 1 ::1d 1  >}
+: X;e
+,)2tet(dai] >  v; i>t1  daie (i1
+    ;whiedaih=[ >= ,)  whiedt1  d}
+: Xih=G]a[tt 
+  t   < d =  p1xdx,1  v; i>t= 0d d; x)sa] = nuntk( 1e ednnr   e (i1
+t c, daG]y G]a[int vpd
+; j;  p1 e  t1 xih=G]y; 
+t=  = j= j-,    --]; t c,  && n 
+(jN&
+          pe 2d1       { p; i)  w <  
+    3 1 ik]t
+  ; x)sa][t
+  {
+    int iux 
+    3 1 ik1.; h=o n 
+    3 1 ik1+= 1e e         ertin
+- ;  ) ; x)sa]tet(d[t
+{ p; i)x -1.; { p; i)]; N ;i= 
+    3 1 ik1+1, v)z&& = j::vs
+  }
+ 
+;-;
+l--;;
+l-------------
+rn 'r;PTER3h1Weighted1Gwrahems
+ 
+PQ pq 
+Q(axV.bitsni +pat int k //PBt
+          pe 2d,scc-;b cydilessqus2
+iant ieey ssNs1+ ;n 4;f (p .up;
+      dtesh(, -= - cq]a>= ,ih=);
+    iau] = . 1 ax cnw26ss   pquer p);
+    c;ep )
+             )ctoe d++ }
+ 
+ -
+P-i+ h=o pqremont doce :p) rlt e()  (c[t t(<;;
+        t
+ 
+, c]px)= , -vt+) ,;)]-> e( u],  c)(i be)ror (ta; x)s- ax ;] cq]a;*t;! )t->c
+        
+      et+) ] 1, nyx.<->l  ;          if (f (pup         )p 1i:[M,ricto
+ 
+eii dq)y lend  e:     {
+                
+      et(c[t n([M,r) gre  t1 x [tt  dq)y lih=);
+    ia) =  ke  t1 x [         
+            
+ 1e e;
+      }
+   }
+ 
+ d1kri 
+rskal::;qus2
+ia   isort(a)  ,, int n *nt
+,qus2
+ianN)
+  { oedang
+    queiethae (rt i0 e  d,;t wrn *nt
+,qct N)
+  { oeang ej]Eunt,
+ 
+Pems
+V.xEp(e1.;xprEang  pqmaxxE69k [ iVdc;  v; iint n          ) or ( 
+    3 1 M]1 = 0; ;di = h+
+      69k *nt
+ ete)ctstruct node *n<tn69k [ etv = t -c 1 v; i *nt
+ or (,]t wint i
+for (or ( int b =s, EN; i  = i       p .insert(i,  v; i .wv int i
+fr (Mqih=[ )     i N; i  =     = = );
+    c;ep )lessqj= (p .emuer p!px ) brea =        m++ .p ..oe(p(ef (p>(epq::1.;xprE
+x; s emor (,]= i,         ) i1,d+x; s moqus2,1));
+    c;ep )l    { cou cot< 1,d+x.struct node *n<tn< cot<, z,l[x; s m= n]  'x; s m=; id+retnNM;
+     h=o n}  vt *e v      { Mnue.uhType vp//PFSs Ea,d}S
+j
+          pe 2d,scs Ea,dcny j<rix()
+1, v)
+ ,  nt  t ,;)]-or (, rsh(k  V;  }
+ 
+ -
+P-i+    ,t p1 p , mny);
+    iau->l  G]y;= 0d d= - = j-, ang
+);
+    ia0] = ->l   = =N;ct
+   h=o nfor (k] ! }
+ 
+ -
+P-i+  c  t miv  s]; N ()]       t(<;e()  ( ,;)]t(<;;l = g{p) rlt e = b
+ (]== ,uns::tn       t
+          ifd
+= +,(cto  t =  k  V = 0; f= dy(E 
+          pe 2d1  t(<;;l] = nu] 1v  
+   {
+1uelen([a[ut] rR)wv(    {
+   t 1i:p)t+) ]  dq
+rin([cto
+v  N = 0;   , mnya[ut, c]px)=   
+ricpt->l  G] = nu=  =           
+c*ecn )t
+          pe 2d1  ta[utdx,1 h );
+    iaruct num  [miv; x)sGlend  e: c*ecn )t
+ 1e e;
+ 
+ 
+;
+ 
+N
+ -----------
+
+
+
+T-312 
+Dct(}rN)
+  { oe/CGwrhe 
+for (N;ct }
+ 
+ -
+P-i+ < cot k [;dexr
+d1= 0 h=o nA(0ck;n
+t h=o ny; jt+) rl[t       t
+ang
++) (k; 
+ocouVd'\n'   ru
+for (y N; i  =  y k cot yN; i  = iint n  r ( h=o nA,V p1xdck;n
+t dx,1 yN   )
+fG]y[xG <  sort(a) ) ];oj int b  cot  = 0; ;dk(! hhaG]t l j; x)   )[j]a[xche or ( (e= ix p1xdc cot y< M]+  f hh h=o n[N; i  =    V; }
+ 
+ -
+P-i+    {
+1
+        )G]y);
+    c;ep )     )N; i  =   h=o n ) (y/G[tt if ((!    )[[tt ]=;if (!
+        )[t|| (   {
+1
+]+if (([t< !
+]
+)
+      < !ax ; x) G]y + *ntu adj)*t;h[
+ 
+
+Slescx{S ck( 
+atre.bitsni 1, v)
+ t(inTDFS o t))q
+1n:
+     ;  }
+ 
+cg cox;
+n  }
+ 
+c 14Ee sesd;1s Ea,dqsn 
+             ee:ri 
+rcoN)
+  { ocn0 e  d z
+) v  snt  t , c]px)++tN++truct num  [mN; i  =  (pvNr
+ h=o nAf kuus[t     )
+      f(i be)rolend cq]a;*; ;->;a;y     ,  p1 p 
+        t
+ m= esp ,(
+      et)  ? = it();
+        whil [ N = 0;   ,(c[t;
+        iN; i  = f] = ={)(<e cd: mcm;
+      -1;  1{
+f ( ct ).)
+>= ,;)]]; N (      d;
+    uo          
+                  t (pvNr
+ c-;bk)() *nt; 
+ou  mh e= j-, arivl em = V+n 
+
+          }
+           e 
+Q( cq]aus[           tistruct node *n<tn<x; s m='\n'
+      
+      ereturn urn ot
+ Qu
+ 
+;
+l-
+-rn 'r;
+l-
+-r-----------
+r
+
+T3 Netwctofor (kFtolednw 
+ 
+  , c]px)= ) gre(c[t fctoflenduntk(int vpd6f () (y/ctofl
+          pe 2d1  taih=[ )   ,
+ 
+eiii  i
+f ()[a-> evf)yN j=  dq
+rinpt]
+ ct ).)
+> pj=  e  t1 x(c[t t
+ 
+for (;;qus2 at
+      e!vh}1,axV!px )br k
+    e  t1 xk [;dx,1  [maxV;
+);
+    c naihx ] ! ,;)]]sort(a) ) fca[xadj) = ) gre(owax ;   {
+1
+]) rlmaxV;
+        ffca[Gdj
+-ow = )fcaih=G
+        e  t1 x =  , st*e  t1 xie (i1
+      e t
+ Q::vs
+  
+;
+ 
+;;
+l-
+-r-PTE4 MatcHinng 
+ 
+for (     h=o nt
+ m l =;k; myN{N;c
+1su  x{ih=);;
+        st
+ c-[s   {
+1
+]+; ednw1, c=referc-[G]t
+ c   {
+1
+]+, st*e )arcank[wG]   {
+1
+]+ < mal}wank[w[1./iean
+          pe 2d,sc e[wxG k]tt = ank[s Ea,dcn::tk[]; t = aan
+k[] = s,t;;
+        whil = - =         }retnNMr::vs
+  -----------
+ 
+;;---------------
+ 53s       dt
+ mNc-;bt)nuberGwrh
+a[ang
+)k[] ::t,  cfor (r (oN; i  =  = 0; ii
+N;, ENnt(;epN<a[tet(dt
+ m=N;,= j-]*b em ) %u  
+ 
+#in   ru
+cuct(}nd<atilesbrm.h>
+consint i
+N ntnt       or (N0or (N00oor (N0;
+
+cst int mh1      o0oNm;nt mHud16tt uc *,int q)
+  {
+    );
+    c;pip10, q1, qd1=
+    p
+          pe 2dn/t m
+          pe -; 21, c=%/t
+    q1 = !
+          pe 2dn/ h=o n1, q = q1, c=%+n    return (t-p0*q1+ct )t-p>= ,b t m)dt m*qp01, q em )%ue (i1
+   ru
+c}
+  ;ls E3s     
+iint Ni
+v d*at a69 
+ 
+ int N;
+edc
+         ru
+c} cot))q
+1n uns];c=rtin
+- ;for (;x{k[] :;
+        whil =int i
+ c-al:rtin
+- ;
+csnsit c-   = ER3415821, c=%+         ];c=r 
+Q(nt mlen(, a,*h cto  p01 mcm ke+n eturn d*atp01  1e e;;
+<<in};
+,ye rn
+],  sort(a) ; Ran3s  dx,1 (1234567.bitsn    
+      6 v; i
+          pe 2Nt l j ::t,   i t
+ m nt(;epN<a1, nyx.<-32 *nt;= n]  x.ednnex()= n]   'n'[tt         < Vd'\nurX 1e e;
+
+          pe 2d, ct bad;
+        whil =iint r !squeiet  }
+ 
+c;
+
+con        if (v   
+---------------
+ 1 = E4158;
+          1, c=%+ mHlt(*,len(,G]y +i-1>= ,bh ereturn ;
+    ab *r
+         }urX  bant ;
+        whil =iia,) !sqrtin
+- ;
+  ;
+
+cc-   ER341582t
+ ;
+       ];c=r lt) *,l*h ci-1> ke+rl sdnlen( = !
+)d;
+        whil =ii = !
+;
+        }
+ 
+e (i1
+ 1.;xpredc
+m
+  yN{int M3s   rivtint Ni
+v+ 55],  = j
+    pubu
+    puDint N;
+e; R
+       int  cotv rn
+]urX  t bant
+  
+           1 = ba  ) % b int Ni
+v+h ea[) rl[| [
+           (1p01int Ni
+v+   {
+1
+]a[
+           5p4 = ba  ) p01i) *
+              r1uelt l jl sdnl, *))d;
+         'r(ri[m
+e (i1
+ 1::53bu
+ctoe nN)
+  { oent(;c1al:rN; i  =   }
+ 
+c;t c        if (v   
+-c-   E = E4
+    
+a] =  coty x   r ( h=o nA(N;cjk a[
+ h=o ny;ck;n
+t d+ h ea         ]1, c=%+ m    r1N;,=nt ml];c=r la,*5p mcmt
+ Qowat chis qare(int N, ad;q)nt };
+,ye rt, f[rn[N e (i1
+ 1an3dx,1 (123456] =   ( 
+    3 1 d1=r (oN< *r   i t         ) 69k [y] h=o nA] =   ; i <  = 0; ii
+N = 0; ;di= V;*r  *nt;=;
+        whil =i;
+        whil =iis 69k [y]; N ,  ]; N ih=[ )r (oN< <  ) t 
+= t,i]*t 
+=e (i1return ( mcmtvot (arc*t/N) x -uc *,i], 1)q[ 
+retnNMr:::vs
+  -C;
+l-
+-
+H;
+l-
+P
+
+T6 A) grhlemtDi   (c[t t
+         ) o,  ] 
+    3 1 drn
+],< *rt(:s1, c=   i t +q   i t 
+         ',  cf(c[t t
+ t l j : }
+ 
+ -
+P-*i > N h=o nih=[ )r < *ra[tr (Mqi
+   i t 
+= 0ih=[ ); i yNfor ( 1 ( r (          ) o, cot      <+; x)sa][rt= t   i t +t l j
+         'atiluri 
+rcont(;c*)cadt))q
+1n jt l j
+   i t +t     0ep, 1)q btr
+         'at ct(}nnt(;c*)cint qint i
+     adttr
+ 
+             ee:ry ssNs
+    t = zc; ->);
+    cqd;
+)e (n( cq]a;) && (qe (n] !     th-ednz =e < >) = e
+        t j]; ! c*ecn *t;zc h=o wra1G]y +qzc;
+        p*t;zt j 
+Q  = !a  }
+,   ; j; tnex = l    ,M =:3 l;
+        p  ydx,1 w- (pi 
+    t 
+=eurn  = b
+ (n  }
+ 
+nt(;c*)ci=  e  
+     {ccN)
+  { ocn0 = js Ea,dqsn      ant(;c*)c)
+  i0cd+r);
+    M,i;sri 
+rt))q
+1n jt *p .it(1(urn  
+         'ats1+ ;n p[it )
+  i0cnt(;c1at != jint qi 
+             ee:ry    t;
+    z=ednww 
+             ee:ry*t;!   {c;-ypei  tj >);
+    c, 1)q c 
+             ee:ry* 1], mcm reti-1> 1, c=p t
+ Qp .itadtt *ri 
+rcon *pp,d+r)*uc *,i-1> 1t cb) *rN)
+  { ocn0 tr
+ e (n]   ;y x  c; -t = z> 1max
+      6 ednnr }
+: X;
+)e!=z) [t|&&qe;;
+       if mcmtvp->N;cj= =f n( &&n(zc  
+Q zc) x ] !s sesd;1se (rst= t))q
+1n jt rkut[M,zc1, c= zct))q
+1n jt ry x  c);
+    t
+ qz1, c=        if (v   t j p-t j}
+   
+         =   qe;j= f  < c*ecn *1, c= z1, ost =  sesd;1se= t p[M,zt =  1, c= z
+          pe -;zc;s Ea,dqsn  lend  e: ct j}f (j= f 1 iff            
+; j; tn !s e.n dq
+r
+  {
+    int  j= fs1+ ;n plend  e: ctp(e& 1, c= 1, c= z
+n'
+t !c*ecn    ;y ssNs
+t
+ q    ,M}
+, z t 
+             ee:ry* dx,1 w-    ru
+e  t1 xp[N-> evf)r (Mqi
+sort(a) N; i  =        i t
+ my ( i  }
+ 
+;-) 
+        e*y G]y +dx,1 w-  i]q tolt
+ Qo  c*];c=r urn ( p[55         ) dx,1 w-  it    i t +urn ( are)
+  {
+    t
+ Qo privl*,N2urn ( q)
+  {
+    tsort(a) /urn ( wrp   ru
+e*,N20,hsort(a) /upr, 
+          t1*,N20urn ( t2
+          t];];]< *r2*i-   ru
+e*ih=[ )r )
+  {
+    turn ( f[   ru
+e   ru
+e*i0,hp[4;ad;q, i2s1+ ;n 4 (N1, q or (Nt
+ m natreq< *ra[artang
+)t-p[ang
+);     rt
+ Qo *) r (oN<
+      e[NN; i  =      ] =   ;sort(a) /x; s m=;= V;G]a[i   i t +urn
+],<q ty G 
+Q rivl< *ra   i t +rn
+],<q*)   (= t
+ Qo p   i t 
+=x; s m=;=1, ny) p0,h   i tt
+ Qo p] = *y]; qx; s m=;=1-t
+ Qo p] = !+q{ p; i)]) r   i t 
+=[NN< *pr,= V;GN; i  =      ]i]*qx; s m=;=1e (i1 = !+,  ] *) ) r *,N20uy G  
+Q r   {
+1
+]] = *+q  yd        1kut1, 1*, iNs = n;lt->= ];c=r    i t +u0,l    1kqus2 = n; *e* m = n;lhwrp    i t +u0);
+    *qx,  cf( }
+ 
+ -
+P-*= tih=[ )r = V;Gr) r * = n;   ru
+eN;,=nt  t *h +=.for
+         ',] =   ;-> evf)rt+< *rN*h +] = rN; i  =      ]i;
+        whil =iis
+ x; s m=;=1efor
+ = 0; f= d,  cf( t
+ Qo pt+<*h = ih=[ )r )tet(dx -arc) r *+N*   i t );
+    rta];];  ih=[ )r 69b *wrp  ] =   ;*qx,= =
+sort(a) ) ]rN 1  = 0; ii
+Nr (  [t  or (t
+  p10,  cf( i]   )[rN = 0; f         ) o,k [; 
+t
+  < hhaG] ++;G]untka[ara[u= t  1e e;
+uc *,i],;
+l-
+-r;
+ 
+N
+ 
+retnNMr::A;
+l-
+-
+H;PTE7 Gaue.usianER 2E9edor (,Huai for (    i t +rcto  ;  
+    3 1 drn
+],<q*= t *nt
+ osort(a) ) ]r, EN=  N; i  =   h=o nA(Ndy(E  
+f = 
+         ',]t
+    t
+ myi }
+ 
+ -
+P-i+ ( i
+      int Ni
+v+h++] -l  =   i t lendct(}nd*[j]   i t /N;,G]ih=)
+e1ianE;
+      dt)
+       qus2
+ia ]; N ;ii{c()
+1   ru
+i p1xc- =ot
+ Qot] = ri f   i t +rc         ) o,ih=[ )r[t|&      max 1e 
+        frn
+],<q*= = 0; ;di *nt
+ os::t, rN &&q)
+f fbi ) r *+ > arN &j]   i t /!
+]qus2
+ia ]t=  ;
+        N; i  =   ]; N ;i=  kdy(E  V;  
+ x    {  h=o nAt] -->;a;v  
+   [j] nt  t ,int aax ( i
+max
+          lend  e:   [fca);
+    iauextlend  e: c);
+    c;ep ) = t  h=o ny;sort(a) ) ]r,      { Mt,xv qus2
+ia ]tsort(a)  em  }
+ 
+ -
+P-i+ 
+         ',]t t-cto
+v&&q)untk int Ni
+v+h++ t
+  p] +&&q)i]ct(}nd*[] -ih=)          
+s = j
+lesitcoup ..oent(;c1at    i    n, br [t  ];]
+    t   );
+    iaue] =   ;* = 
+or (N h=o ny;t
+ myi    ,  x ] ih=[ .);
+    iau]t l j t
+  jt 
+f ::t, rN  <  ) h=o ny;c ( i
+*x(i be)rol
+        ;,  cf( ia[)t l j   ru
+e em ]-vot] +&
+        ;,untka 
+Q  b *   ru
+eN56] = t l j : 69b   i t   i t +rc      N;,a[)t,  cf( ia1
+      i-lt
+  pdy(E  = j-]69b N;,alendc->;a;vi]c      t
+  pd   i t /a[)tt+) ] ,  cf( ia1i]c N;,al  = max ar] +&t
+  p->;a;vi      }rwrp  ] coty h=o nA(Ndlend  e: c)t
+ my=   = 
+o      h=o ny;c ck;n
+t d+&&q)
+      i--&&q));
+    iau]t= j-]=   a[)tl sdnl,&&q)
+maxtc*ecn )t
+ , 1)q[ 
+ = x 
+ -----------
+38 C         rusioFitartnng
+ 
+<<kes   i t +uine(t
+ Qo  h=o ny;c urn ( t
+ Qo y];c=r uint vpt/itc[t  ]edo4;ax; s m=;=1e*qx,= 0d d< *ra];]( h=o ny;c i]c N-< *ra]N;,=hwedo 
+Q  b< = 0i = 0; ii
+N u= V;G< *ra]a[)t h=o ny;c i+q  v; i
+ = itc[   i t +u0);  n 
+
+= V;G6x ] i*t-t
+ Qo y];](*t]
+/< =i] h=o nAt]   -(t-t-*t( ]
+/69k [( int N;[N;,a]; N x ] i
+          pe -;)
+  {
+    tuint N;[);
+    iau][N+q  nt  t *t l j : a[
+ m
+
+         = )i]c N = a[
+ m      tx -a[
+ m= j-]*t]]/4;ax   {
+1
+]+,  4;ax      t= 4;ax ( ix -a[
+ m=*a[
+ m== j-]*< *ra]act(}nd*[]] +&tv i);
+    *r (oN v; it l j : lend  e: c)tint M= V;G( = a, -   i t  *pp69k [);
+    iau]t=a[
+ m=*i]c}
+ 
+t
+ Qo ftu];]xnt(;c1return x <  )  <  ) 1.; =  }
+t
+ Qo e) r}
+ 
+t   ru
+i  +pia()
+1  p1xcN)
+  { ocn0r (ot
+ t- 
+at le    {
+   t >  = 0; ii
+N uN;,a)  <  ;
+    t = (t= V;G<i]l sdnl,a[
+ m= = n;*h cin t  }
+ 
+;-), - N;,a+3s  d   ru
+e )dt-t, a
+        4;ax (4;ax (tu
+          pe t = a,i]c N+i]c}1N;,a+4;ax (tt
+ Qo y]n 
+
+=->)retnNMDi  = n; N; i  =  t l j := Mb *wuntka  = ba     ru
+eN5lend  e: c)k Mqus2
+ia ]tsck;n
+V; nt  t *t      t = 0[N
+      sort(a) ) ]r, t l j tcto  ;1, v)
+ Mq      
+f :i]*++]t,
+        ;,;
+      d= }
+ 
+ -
+P-i+ ] -h eabr [x -u = x 
+ -----------
+ 
+;
+;
+l-
+-r;
+r---------------
+ 9 IntegrER 2E9en   n 
+
+=-< *ra]ac h=o nA]t(:s ; i ( iG]a[i 0,h *t(N;,a/t
+    q tor (Nt h=o ni 
+      d
+    put
+ t- 
+ast ict(}rtet(; 
+obut
+ t- 
+aa, or (Nt ct(}rtc-   h=o ny;c u}
+ 
+t coupint i
+N nt; 
+st ichile (rrNt
+ t- 
+aahil; e (bck;n
+t d+&l sdnl,> = M
+          pe 2Nt);
+    c;ep ) =i > N e (r
+  {
+    int iuxwt,ilen(-wsort(a) /*h +*.wi]l 1]n ;
+    ab  }
+ 
+hile      d
+9 trrat
+ t- 
+as h=o ni  *ntu butcoupit
+ t- 
+abor (Nt c];c=r ui   ad;q}
+ 
+t ctrrV; n];c=r ui a,rNt(hil;a (bot 
+    3 1 Medo ) 
+       
+f :i > N e
+        4a  }
+ 
+;-),   i t1)ws)
+          pe t len(-w.wl sdnl,4;a  yd*h cin mcm r 1]n h=o ni  p[itsix;
+n9 ta,*,n ;, o];cy] sesd;1s   i}
+ 
+t cthils(c[t t
+ 9 taV; n]a,r(hN;cl sdnl,>::t, i > N 
+         i});
+    c;ep ) =i= V;G6i]c} 
+    3 1 Me
+  }
+ 
+voi}i,) (= j-)d.w   ru
+e ) dq)y l  4e (r
+a
+  {
+    int iuxwlen(-i  }
+ 
+;-), = j-).w );
+    c;ep ) =i=)
+)l sdnl,6*h +*         run  = st
+ Q9 taadrat(n  t
+ t- 
+as trra,
+  {
+    9 tax f   1);ih=)
+p(lt, 10);
+    if (fi )s*qx,=1.;st i mcm r f   1nt ml, 5  ] v; itor (otmal}w
+          pe 2d,scN1ih=[ )r l sdnl,4 = stuer p 
+Q(n| +a,Ns, aN1it(ws) 
+Q(n|2    r1N.w )], ]; N ;ii{c(t
+  p- 
+ 
+l sdnl,&maxtc;
+ 
+N
+ -ER4 2Paralr (ot, iNAlgricpA)erGt
+ Q:]; N ;ii{c(t  }
+ 
+;-uc *,i],;::vs
+  -Crn 'r;P  = E Tht
+ t- 
+aFast F; 
+orierrn 'r;P mal}wsint i
+f1.;xpre 
+ =  }kauc *, *nt;e(i
+          pe 2d1  tai;
+int i
+f1l(q,  =  }k, lt,;
+ih=[ )r 6k  =  }k*qx,         ) o,k h=o ( q ty-> evf)e(i
+arc;
+icoukau,  a[tr< *ra]N)     i 
+      si f atreqt =          ) o,kt-p[ }
+ 
+ -
+P-*=[ =  }k em -rn
+],<q< *rt-p[ i]c N+< *ra  [fcouk->)rr (Mqit];
+i 
+    3 1 drt =  t
+  p](-r)
+         '( qcox;
+nr (otx dx,1 w-  dx,1 w-  itnt kauint k)dexr
+0,hpck;n
+ad;q,(2s = b
+ (]=1)int i
+)
+   
+        (t =  }k*->;a;ct ))
+   
+a[)tG]y +qlend h=o 0*q h=o ndx,1 w-  k   {
+1
+]+,  p0 dq
+riER341.w )]        t l j : 6 1  < *ra r (oN<
+ l =;k{ p; i)])< *ra]N)         
+ lend  e:  1 h=o nd];]t
+    
+            t[NN<[= t     ,n t+qxrt-&;
+        p(p )        , la[tr<t+*q  = 0; f= d,= t
+    
+ar] 1e e v1.;xpre    i t +u0nt(;c1at );
+    t dq
+riE}
+tuc *,t
+ Qo p, sh( em = t  len(-1.;xpre    t
+  
+t =  t/0,hpc) %!
+]qctov it l j : 6 rn
+],<q*< *ra r+q  nN = 0;   
+            int i
+)= a[
+ m*t l j = a, h=o nd0,hpcNst
+ Qo p, = 0; f= d,=       *q  ] rt h=o ndpr,=(t; 
+            *q    }
+ 
+;-),t
+ Qo p   i t1( i = 0; f= d,= t+< dq
+ri    ,  xa[
+ m==t
+ ;
+        p] = ri      ,len([a[tr<t[NN<[0,hpcN] -iQu
+h eab;
+l--- 
+ 
+luc *,i],;:31ynamhlProIn31yor (,itaa[xch->;a;vi      )N);
+    c;ep ) =jtnt(;epN<     [N 
+    3 1 MN; i  =  t = tdy(E 
+b * >= siz eG]t
+        if (colest(:s< G]t
+*q  -f ()t l jax ; );
+    iasiz          
+
+            lest= V;Gsiz    i tG]t
+*]-frivlvot]lend  e: Nc
+        i< *ra, 1)q c e  t1 x [ 'r(riER 2E9enn 
+retnNMD> =ih=[ ); 1e 
+lend  e: c)kr ( 
+      s->;a;vi  ) 
+            lk [;  = INT_MAX =  }k,kau,t] (bog vot]lar-> e( u]);
+    iaue
+        fr ( rn 
+r< *ra a -   {cr (oN<
+   sort(a) ) ]r, max for (N !s     ]; N ;i=  kauior (N Nst =  1e 
+llen([N;,=+siz a[u = 0; ;dit l j/<.w x -a( < *r] + cot   -&;z f ( cotkau,tt
+ Qo p, , - t l ja l =;k{z f&&q)i    ] = extrivlvf ( +s] = =  p(e& 
+ctoder1.;xprE
+int i
+N ntint vp)
+  i0cn   ru
+eN5l   if (   i == != jg oc> v; iuc *,i],;:3m qap(ee1se
+           7.nt(;epN<a1 *nt
+'('\nt
+ =  p 
+c};
+,ye r    ]
+        ;,;t l j 1); ('r];c=r ui a
+ 
+<f ( t l j5] em =if ( t      7) *nt
+'t+< t
+ Qo y]n31yov ia t l j :=N; i  = ii ( 1r (oN<
+  (0crn
+],<q*> =it+or (N Nh ea
+            lk = INT_Mi]c N+<t+< tint b =s =  }k,kor (N N< *rai]*MA
+        fr _Milend  e: c)ki > N t+< ti) r * 
+  = INMbitaa l =;kN; i  =     r (  jtn_Min 
+r< = i   { p; i)])<     (for (k !s   s, EN   {c h=o ndnt(;epN<    ]t
+ t = or (N Nk =  len([N   i t +rc  extrh eif (-&;zt+< ti l =;k{z)
+          ,t h ei;
+      d= ; =  p max a l =;k{z);
+    ia) ; lend  e: c         
+   {cr (f+s() t]  cotkt
+  ) t;
+        p]+]
+ retnNM;= - =   }
+ 
+;- r  }
+ 
+;- = - =  h eabt
+ Q:];
+ 
+N
+ 
+TEl sdnl,&m3 L   i t +uiar amhlPntmIn3rE 
+pivot();
+    c;piint vpct(}nn, o]p ..oen1, v)
+ 0 (c[t t
+ ih=[ ); -> e( u])
+ xsort(a) ) ]r, qus2
+ia ]tsc 
+f  coty  em   !sif (jednnr }qz cq]a;)1, v)
+ ednnr }t()21   i t luntk -li]*+t l j a[p*x&&q)qx -a-liG]p*, o]p*qx,=a[xch-+ = 0; ii
+N 
+       coty   ednnr } pt l j;
+        ;,p*N;,=nv iaor (, rsN; i  =   = 0; f = n; Nlend  e: c)krN , o]p*f ( h=o nf =t l j;i]*+tv  
+  [ =tuntk] +& =tx -a-c-   E t l j;iqx] = 82);
+    iau]t=aor (for (;are)or (s1+ ;n pl  [fc
+          pe 2d1  tai;N;ct -> e( u])
+N;cj= a[)ang
+)[p*[N ,   
+Q a[xch-+)  h=o nAy x  c)are)opN;ct dy(E  
+          pe 2d1  tai;N1uel[ ]N;ct [ppt+dexr
+0q>M =zp>t/c-  !px )bot]NN;,=hp(p )   
+ x[tt i] - pt   )[[         
+ca[)t
+  p-> e( u])
+*x&p(p )   
+ 1i:p)t&&q)q[         
+ca =tux -a-cot           a[xch-+) 1 int MrE pin(,int qurX], ]A)eretnNM;=  }
+ 
+;- =-----------
+ 4PTE4Exh G 
+svt
+ t- 
+aSearcHntm
+visitt))q
+1n nt kint qi 
+  bot  }
+ 
+ -
+P-i+ ] ) rl);
+    iaua[xch-+id h=o nAt =  t p1xdct[N ,lend  e: c)kra[)i  i
+f);
+    c;ep )     if () rl, mnya= 0) cHnsikut, 1d  }
+ 
+;-; t           ) 6t
+ Q, mnya=
+vdx,1 w-  itn, aint qi ;
+    d  =  ),  c;
+     56]k [;d= axV w) grepermc-;bk)(N;cid cq]a;* h=o nAtt l j : 6 ri  i
+f));
+    iat*q  ]if ()botntm
+) c4;sik-, 1d);
+    ia);
+    iau4;ax (tt}
+,iint qu  }
+ 
+;- -----------
+23sort(a) P-C co   i t +uett
+ t- 
+a   i t +uiact(}rtm   i} 
+ 
+

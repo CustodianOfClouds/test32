@@ -1,0 +1,44 @@
+LRU Eviction: Removing pattern 'ABA' (code=10, age=5)
+LRU Eviction: Added pattern 'CAB' (code=10)
+LRU Map state: {AB=1, BC=3, ABC=1, BAB=4, CAB=0, ABAB=5, CA=0, BA=4}
+LRU Eviction: Removing pattern 'ABAB' (code=11, age=6)
+LRU Eviction: Added pattern 'BCA' (code=11)
+LRU Map state: {AB=2, BC=0, BCA=0, ABC=2, BAB=5, CAB=1, CA=1, BA=5}
+LRU Eviction: Removing pattern 'BAB' (code=12, age=6)
+LRU Eviction: Added pattern 'ABCA' (code=12)
+LRU Map state: {AB=3, BC=1, BCA=1, ABCA=0, ABC=0, CAB=2, CA=2, BA=6}
+LRU Eviction: Removing pattern 'BA' (code=9, age=7)
+LRU Eviction: Added pattern 'ABCAB' (code=9)
+LRU Map state: {AB=4, BC=2, BCA=2, ABCA=0, ABCAB=0, ABC=1, CAB=3, CA=3}
+LRU Eviction: Removing pattern 'AB' (code=8, age=5)
+LRU Eviction: Added pattern 'BA' (code=8)
+LRU Map state: {BC=3, BCA=3, ABCA=1, ABCAB=1, ABC=2, CAB=4, CA=4, BA=0}
+LRU Eviction: Removing pattern 'CAB' (code=10, age=5)
+LRU Eviction: Added pattern 'AB' (code=10)
+LRU Map state: {BC=4, BCA=4, ABCA=2, ABCAB=2, AB=0, ABC=3, CA=5, BA=1}
+LRU Eviction: Removing pattern 'CA' (code=14, age=6)
+LRU Eviction: Added pattern 'BCAB' (code=14)
+LRU Map state: {BC=5, BCA=0, ABCA=3, ABCAB=3, AB=1, ABC=4, BCAB=0, BA=2}
+LRU Eviction: Removing pattern 'BC' (code=13, age=6)
+LRU Eviction: Added pattern 'BCABC' (code=13)
+LRU Map state: {BCABC=0, BCA=1, ABCA=4, ABCAB=4, AB=2, ABC=5, BCAB=0, BA=3}
+LRU Eviction: Removing pattern 'ABC' (code=15, age=6)
+LRU Eviction: Added pattern 'CA' (code=15)
+LRU Map state: {BCABC=1, BCA=2, ABCA=5, ABCAB=5, AB=3, BCAB=1, CA=0, BA=4}
+LRU Eviction: Removing pattern 'ABCA' (code=12, age=6)
+LRU Eviction: Added pattern 'ABA' (code=12)
+LRU Map state: {BCABC=2, ABA=0, BCA=3, ABCAB=6, AB=0, BCAB=2, CA=1, BA=5}
+LRU Eviction: Removing pattern 'ABCAB' (code=9, age=7)
+LRU Eviction: Added pattern 'ABC' (code=9)
+LRU Map state: {BCABC=3, ABA=1, BCA=4, AB=0, ABC=0, BCAB=3, CA=2, BA=6}
+LRU Eviction: Removing pattern 'BA' (code=8, age=7)
+LRU Eviction: Added pattern 'CAB' (code=8)
+LRU Map state: {BCABC=4, ABA=2, BCA=5, AB=1, ABC=1, CAB=0, BCAB=4, CA=0}
+LRU Eviction: Removing pattern 'BCA' (code=11, age=6)
+LRU Eviction: Added pattern 'BC' (code=11)
+LRU Map state: {BCABC=5, ABA=3, AB=2, BC=0, ABC=2, CAB=1, BCAB=5, CA=1}
+LRU Eviction: Removing pattern 'BCABC' (code=13, age=6)
+LRU Eviction: Added pattern 'C
+' (code=13)
+LRU Map state: {ABA=4, AB=3, BC=1, ABC=3, CAB=2, C
+=0, BCAB=6, CA=2}
