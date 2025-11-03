@@ -517,6 +517,4 @@ public class LZWTool {
 
         return header;
     }
-
-
 }
