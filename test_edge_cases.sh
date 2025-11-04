@@ -104,7 +104,7 @@ run_test "Truncated compressed file" "fail" \
 run_test "maxW too large (>32)" "pass" \
     "echo 'a' | java LZWTool --mode compress --alphabet alphabets/ab.txt --minW 2 --maxW 255"
 
-run_test "minW = 0" "pass" \
+run_test "minW = 0 (should fail - cannot write 0 bits)" "fail" \
     "echo 'a' | java LZWTool --mode compress --alphabet alphabets/ab.txt --minW 0 --maxW 4"
 
 # 8. Special characters in input

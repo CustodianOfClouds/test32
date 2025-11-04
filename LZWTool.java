@@ -395,9 +395,20 @@ public class LZWTool {
 
     // commandline args
     private static void validateCompressionArgs() {
-        if (alphabetPath == null || minW > maxW) {
-            System.err.println("Error: Invalid arguments for compression");
+        if (alphabetPath == null) {
+            System.err.println("Missing required argument: --alphabet is required for compression mode");
             System.exit(1);
+        }
+        if (minW < 1) {
+            System.err.println("Invalid argument: --minW must be at least 1 (cannot write 0-bit codewords)");
+            System.exit(1);
+        }
+        if (maxW < minW) {
+            System.err.println("Invalid argument: --maxW (" + maxW + ") must be >= --minW (" + minW + ")");
+            System.exit(1);
+        }
+        if (maxW > 32) {
+            System.err.println("Warning: --maxW (" + maxW + ") is very large, may cause issues");
         }
     }
 
@@ -405,22 +416,52 @@ public class LZWTool {
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
                 case "--mode":
+                    if (i + 1 >= args.length) {
+                        System.err.println("Missing value for argument: --mode requires a value (compress or expand)");
+                        System.exit(1);
+                    }
                     mode = args[++i];
                     break;
                 case "--minW":
-                    minW = Integer.parseInt(args[++i]);
+                    if (i + 1 >= args.length) {
+                        System.err.println("Missing value for argument: --minW requires a numeric value");
+                        System.exit(1);
+                    }
+                    try {
+                        minW = Integer.parseInt(args[++i]);
+                    } catch (NumberFormatException e) {
+                        System.err.println("Invalid value for --minW: '" + args[i] + "' is not a valid integer");
+                        System.exit(1);
+                    }
                     break;
                 case "--maxW":
-                    maxW = Integer.parseInt(args[++i]);
+                    if (i + 1 >= args.length) {
+                        System.err.println("Missing value for argument: --maxW requires a numeric value");
+                        System.exit(1);
+                    }
+                    try {
+                        maxW = Integer.parseInt(args[++i]);
+                    } catch (NumberFormatException e) {
+                        System.err.println("Invalid value for --maxW: '" + args[i] + "' is not a valid integer");
+                        System.exit(1);
+                    }
                     break;
                 case "--policy":
+                    if (i + 1 >= args.length) {
+                        System.err.println("Missing value for argument: --policy requires a value (freeze, reset, lru, or lfu)");
+                        System.exit(1);
+                    }
                     policy = args[++i];
                     break;
                 case "--alphabet":
+                    if (i + 1 >= args.length) {
+                        System.err.println("Missing value for argument: --alphabet requires a file path");
+                        System.exit(1);
+                    }
                     alphabetPath = args[++i];
                     break;
                 default:
-                    System.err.println("Unknown argument: " + args[i]);
+                    System.err.println("Unknown argument: '" + args[i] + "' is not a recognized option");
                     System.exit(2);
             }
         }
@@ -428,7 +469,19 @@ public class LZWTool {
 
     public static void main(String[] args) {
 
+        if (args.length == 0) {
+            System.err.println("No arguments provided. Usage:");
+            System.err.println("  Compress: java LZWTool --mode compress --alphabet <file> [--minW <n>] [--maxW <n>] [--policy <name>]");
+            System.err.println("  Expand:   java LZWTool --mode expand");
+            System.exit(1);
+        }
+
         parseArguments(args);
+
+        if (mode == null) {
+            System.err.println("Missing required argument: --mode must be specified (compress or expand)");
+            System.exit(1);
+        }
 
         if (mode.equals("compress")) {
             validateCompressionArgs();
@@ -437,7 +490,12 @@ public class LZWTool {
             List<Character> alphabet = loadAlphabet(alphabetPath);
 
             if (alphabet == null) {
-                System.err.println("Error: Could not load alphabet from " + alphabetPath);
+                System.err.println("Failed to load alphabet: Could not read file '" + alphabetPath + "' (file may not exist or is not readable)");
+                System.exit(1);
+            }
+
+            if (alphabet.size() == 0) {
+                System.err.println("Invalid alphabet: Alphabet file '" + alphabetPath + "' contains no valid characters");
                 System.exit(1);
             }
 
@@ -448,7 +506,7 @@ public class LZWTool {
             // we pipe raw binary data out during expand
             expand();
         } else {
-            System.err.println("Error: --mode must be 'compress' or 'expand'");
+            System.err.println("Invalid value for --mode: '" + mode + "' is not valid (must be 'compress' or 'expand')");
             System.exit(1);
         }
     }
@@ -592,7 +650,7 @@ public class LZWTool {
 
         char c = BinaryStdIn.readChar();
         if (!validChar[c]) {
-            System.err.println("Error: Input contains byte value " + (int) c + " which is not in the alphabet");
+            System.err.println("Input contains byte value " + (int) c + " which is not in the alphabet");
             System.exit(1);
         }
         StringBuilder current = new StringBuilder().append(c);
@@ -611,7 +669,7 @@ public class LZWTool {
 
             c = BinaryStdIn.readChar();
             if (!validChar[c]) {
-                System.err.println("Error: Input contains byte value " + (int) c + " which is not in the alphabet");
+                System.err.println("Input contains byte value " + (int) c + " which is not in the alphabet");
                 System.exit(1);
             }
 
