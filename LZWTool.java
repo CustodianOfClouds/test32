@@ -524,7 +524,12 @@ public class LZWTool {
         int maxCode = 1 << maxW;
         int alphabetSize = alphabet.size();
 
-        Set<Character> alphabetSet = new HashSet<>(alphabet);
+        // O(1) alphabet validation using boolean array instead of HashSet
+        boolean[] validChar = new boolean[256]; // Extended ASCII
+        for (Character symbol : alphabet) {
+            validChar[symbol] = true;
+        }
+
         int nextCode = 0;
         StringBuilder sb = new StringBuilder(1);
 
@@ -582,7 +587,7 @@ public class LZWTool {
         }
 
         char c = BinaryStdIn.readChar();
-        if (!alphabetSet.contains(c)) {
+        if (!validChar[c]) {
             System.err.println("Error: Input contains byte value " + (int) c + " which is not in the alphabet");
             System.exit(1);
         }
@@ -591,49 +596,62 @@ public class LZWTool {
 
         int step = 0;
         debug("\n=== ENCODING LOOP ===");
+
+        // Reusable StringBuilder for concatenation
+        StringBuilder nextBuilder = new StringBuilder(256);
+
+        // Cache bit width threshold to avoid recalculating (1 << W)
+        int widthThreshold = 1 << W;
+
         while (!BinaryStdIn.isEmpty()) {
 
             c = BinaryStdIn.readChar();
-            if (!alphabetSet.contains(c)) {
+            if (!validChar[c]) {
                 System.err.println("Error: Input contains byte value " + (int) c + " which is not in the alphabet");
                 System.exit(1);
             }
-            StringBuilder next = new StringBuilder(current).append(c);
+
+            // Reuse nextBuilder instead of creating new StringBuilder
+            nextBuilder.setLength(0);
+            nextBuilder.append(current).append(c);
 
             step++;
             debug("\n--- Step " + step + " ---");
             debug("Read char: '" + escapeString(String.valueOf(c)) + "'");
-            debug("current = '" + escapeString(current.toString()) + "', next = '" + escapeString(next.toString()) + "'");
+            debug("current = '" + escapeString(current.toString()) + "', next = '" + escapeString(nextBuilder.toString()) + "'");
 
-            if (dictionary.contains(next)) {
-                debug("Codebook CONTAINS '" + escapeString(next.toString()) + "' - extending current");
-                current = next;
+            if (dictionary.contains(nextBuilder)) {
+                debug("Codebook CONTAINS '" + escapeString(nextBuilder.toString()) + "' - extending current");
+                // Copy nextBuilder to current
+                current.setLength(0);
+                current.append(nextBuilder);
             } else {
                 // Output current pattern
                 int outputCode = dictionary.get(current);
-                debug("Codebook does NOT contain '" + escapeString(next.toString()) + "'");
+                debug("Codebook does NOT contain '" + escapeString(nextBuilder.toString()) + "'");
                 debug("OUTPUT: code=" + outputCode + " for '" + escapeString(current.toString()) + "' (W=" + W + " bits)");
                 BinaryStdOut.write(outputCode, W);
 
+                // Cache string conversions (used multiple times)
+                String currentStr = null;
+                if (lruPolicy || lfuPolicy) {
+                    currentStr = current.toString();
+                }
+
                 // Update LRU: mark this code as recently used (only if it's already tracked)
-                if (lruPolicy) {
-                    String currentStr = current.toString();
-                    if (lruTracker.contains(currentStr)) {
-                        lruTracker.use(currentStr);
-                    }
+                if (lruPolicy && lruTracker.contains(currentStr)) {
+                    lruTracker.use(currentStr);
                 }
 
                 // Update LFU: mark this code as recently used (only if it's already tracked)
-                if (lfuPolicy) {
-                    String currentStr = current.toString();
-                    if (lfuTracker.contains(currentStr)) {
-                        lfuTracker.use(currentStr);
-                    }
+                if (lfuPolicy && lfuTracker.contains(currentStr)) {
+                    lfuTracker.use(currentStr);
                 }
 
                 if (nextCode < maxCode) {
-                    if (nextCode >= (1 << W) && W < maxW) {
+                    if (nextCode >= widthThreshold && W < maxW) {
                         W++;
+                        widthThreshold = 1 << W;  // Update cached threshold
                         debug("Increased W to " + W);
                     }
 
@@ -644,7 +662,10 @@ public class LZWTool {
                         String lruEntry = lruTracker.findLRU();
                         if (lruEntry != null) {
                             debug("EVICTING: '" + escapeString(lruEntry) + "'");
-                            dictionary.put(new StringBuilder(lruEntry), null);
+                            // Reuse nextBuilder for eviction lookup
+                            nextBuilder.setLength(0);
+                            nextBuilder.append(lruEntry);
+                            dictionary.put(nextBuilder, null);
                             lruTracker.remove(lruEntry);
                         }
                     }
@@ -656,14 +677,22 @@ public class LZWTool {
                         String lfuEntry = lfuTracker.findLFU();
                         if (lfuEntry != null) {
                             debug("EVICTING: '" + escapeString(lfuEntry) + "'");
-                            dictionary.put(new StringBuilder(lfuEntry), null);
+                            // Reuse nextBuilder for eviction lookup
+                            nextBuilder.setLength(0);
+                            nextBuilder.append(lfuEntry);
+                            dictionary.put(nextBuilder, null);
                             lfuTracker.remove(lfuEntry);
                         }
                     }
 
-                    String nextStr = next.toString();
+                    // Now add the new entry (nextBuilder already contains current + c)
+                    nextBuilder.setLength(0);
+                    nextBuilder.append(current).append(c);
+                    String nextStr = nextBuilder.toString();
+
                     debug("ADDING to codebook: '" + escapeString(nextStr) + "' -> code " + nextCode);
-                    dictionary.put(next, nextCode);
+                    // Create new StringBuilder for dictionary storage
+                    dictionary.put(new StringBuilder(nextStr), nextCode);
 
                     // Add new entry to LRU tracker
                     if (lruPolicy) {
@@ -681,8 +710,9 @@ public class LZWTool {
                     // Dictionary full
                     if (resetPolicy) {
                         debug("RESET policy: codebook full");
-                        if (nextCode >= (1 << W) && W < maxW) {
+                        if (nextCode >= widthThreshold && W < maxW) {
                             W++;
+                            widthThreshold = 1 << W;
                             debug("Increased W to " + W);
                         }
                         debug("OUTPUT RESET_CODE: " + RESET_CODE + " (W=" + W + " bits)");
@@ -695,13 +725,16 @@ public class LZWTool {
 
                         nextCode = initialNextCode;
                         W = minW;
+                        widthThreshold = 1 << W;  // Reset cached threshold
                         debug("Reset complete: nextCode=" + nextCode + ", W=" + W);
                     } else {
                         debug("FREEZE policy: codebook full, no action");
                     }
                 }
 
-                current = new StringBuilder().append(c);
+                // Reset current to single character
+                current.setLength(0);
+                current.append(c);
                 debug("current reset to: '" + escapeString(current.toString()) + "'");
             }
         }
@@ -713,23 +746,24 @@ public class LZWTool {
             debug("OUTPUT final: code=" + outputCode + " for '" + escapeString(current.toString()) + "' (W=" + W + " bits)");
             BinaryStdOut.write(outputCode, W);
 
-            if (lruPolicy) {
-                String currentStr = current.toString();
-                if (lruTracker.contains(currentStr)) {
-                    lruTracker.use(currentStr);
-                }
+            // Cache string conversion
+            String currentStr = null;
+            if (lruPolicy || lfuPolicy) {
+                currentStr = current.toString();
             }
 
-            if (lfuPolicy) {
-                String currentStr = current.toString();
-                if (lfuTracker.contains(currentStr)) {
-                    lfuTracker.use(currentStr);
-                }
+            if (lruPolicy && lruTracker.contains(currentStr)) {
+                lruTracker.use(currentStr);
+            }
+
+            if (lfuPolicy && lfuTracker.contains(currentStr)) {
+                lfuTracker.use(currentStr);
             }
         }
 
-        if (nextCode >= (1 << W) && W < maxW) {
+        if (nextCode >= widthThreshold && W < maxW) {
             W++;
+            widthThreshold = 1 << W;
             debug("Increased W to " + W + " for EOF_CODE");
         }
 
@@ -828,10 +862,15 @@ public class LZWTool {
 
         int step = 0;
         debug("\n=== DECODING LOOP ===");
+
+        // Cache bit width threshold to avoid recalculating (1 << W)
+        int widthThreshold = 1 << W;
+
         while (!BinaryStdIn.isEmpty()) {
 
-            if (nextCode >= (1 << W) && W < h.maxW) {
+            if (nextCode >= widthThreshold && W < h.maxW) {
                 W++;
+                widthThreshold = 1 << W;
                 debug("Increased W to " + W);
             }
 
@@ -853,6 +892,7 @@ public class LZWTool {
 
                 nextCode = initialNextCode;
                 W = h.minW;
+                widthThreshold = 1 << W;  // Reset cached threshold
                 debug("Reset complete: nextCode=" + nextCode + ", W=" + W);
 
                 codeword = BinaryStdIn.readInt(W);
@@ -1049,4 +1089,5 @@ public class LZWTool {
     }
 
 }
+
 
