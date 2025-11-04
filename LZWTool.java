@@ -23,7 +23,7 @@ public class LZWTool {
     // Path to the alphabet file for initializing the codebook
     private static String alphabetPath;
 
-    private static final boolean DEBUG = true; // Set to false to disable debug output
+    private static final boolean DEBUG = false; // Set to false to disable debug output
 
     // Optimized LRU tracking using timestamps and HashMap for compression
     private static class LRUTracker {
@@ -115,6 +115,140 @@ public class LZWTool {
         }
     }
 
+    // LFU tracking for compression using frequency counts
+    private static class LFUTracker {
+        // Store frequency count for each key
+        private final HashMap<String, Integer> frequency;
+        // Store insertion/update timestamp for tie-breaking
+        private final HashMap<String, Integer> timestamp;
+        private int currentTime = 0;
+
+        LFUTracker(int capacity) {
+            this.frequency = new HashMap<>(capacity);
+            this.timestamp = new HashMap<>(capacity);
+            debug("LFUTracker initialized with capacity: " + capacity);
+        }
+
+        void use(String key) {
+            // Increment frequency (or set to 1 if new)
+            frequency.put(key, frequency.getOrDefault(key, 0) + 1);
+            // Update timestamp for tie-breaking
+            timestamp.put(key, currentTime++);
+            debug("LFUTracker.use('" + escapeString(key) + "') freq=" + frequency.get(key) +
+                  ", time=" + (currentTime-1) + ", mapSize=" + frequency.size());
+        }
+
+        String findLFU() {
+            String lfuKey = null;
+            int minFreq = Integer.MAX_VALUE;
+            int oldestTime = Integer.MAX_VALUE;
+
+            for (Map.Entry<String, Integer> entry : frequency.entrySet()) {
+                String key = entry.getKey();
+                int freq = entry.getValue();
+                int time = timestamp.get(key);
+
+                // Find least frequently used, break ties by oldest timestamp
+                if (freq < minFreq || (freq == minFreq && time < oldestTime)) {
+                    minFreq = freq;
+                    oldestTime = time;
+                    lfuKey = key;
+                }
+            }
+            debug("LFUTracker.findLFU() -> '" + escapeString(lfuKey) + "' with freq=" + minFreq + ", time=" + oldestTime);
+            return lfuKey;
+        }
+
+        void remove(String key) {
+            frequency.remove(key);
+            timestamp.remove(key);
+            debug("LFUTracker.remove('" + escapeString(key) + "'), mapSize=" + frequency.size());
+        }
+
+        boolean contains(String key) {
+            return frequency.containsKey(key);
+        }
+
+        void printState() {
+            debug("LFUTracker state (size=" + frequency.size() + "):");
+            List<Map.Entry<String, Integer>> entries = new ArrayList<>(frequency.entrySet());
+            entries.sort((e1, e2) -> {
+                int freqCmp = e1.getValue().compareTo(e2.getValue());
+                if (freqCmp != 0) return freqCmp;
+                return timestamp.get(e1.getKey()).compareTo(timestamp.get(e2.getKey()));
+            });
+            for (Map.Entry<String, Integer> entry : entries) {
+                debug("  '" + escapeString(entry.getKey()) + "' -> freq=" + entry.getValue() +
+                      ", time=" + timestamp.get(entry.getKey()));
+            }
+        }
+    }
+
+    // LFU tracker for decoder (uses Integer keys for codes)
+    private static class LFUTrackerDecoder {
+        // Store frequency count for each code
+        private final HashMap<Integer, Integer> frequency;
+        // Store insertion/update timestamp for tie-breaking
+        private final HashMap<Integer, Integer> timestamp;
+        private int currentTime = 0;
+
+        LFUTrackerDecoder(int capacity) {
+            this.frequency = new HashMap<>(capacity);
+            this.timestamp = new HashMap<>(capacity);
+            debug("LFUTrackerDecoder initialized with capacity: " + capacity);
+        }
+
+        void use(int code) {
+            // Increment frequency (or set to 1 if new)
+            frequency.put(code, frequency.getOrDefault(code, 0) + 1);
+            // Update timestamp for tie-breaking
+            timestamp.put(code, currentTime++);
+            debug("LFUTrackerDecoder.use(code=" + code + ") freq=" + frequency.get(code) +
+                  ", time=" + (currentTime-1) + ", mapSize=" + frequency.size());
+        }
+
+        int findLFU() {
+            int lfuCode = -1;
+            int minFreq = Integer.MAX_VALUE;
+            int oldestTime = Integer.MAX_VALUE;
+
+            for (Map.Entry<Integer, Integer> entry : frequency.entrySet()) {
+                int code = entry.getKey();
+                int freq = entry.getValue();
+                int time = timestamp.get(code);
+
+                // Find least frequently used, break ties by oldest timestamp
+                if (freq < minFreq || (freq == minFreq && time < oldestTime)) {
+                    minFreq = freq;
+                    oldestTime = time;
+                    lfuCode = code;
+                }
+            }
+            debug("LFUTrackerDecoder.findLFU() -> code=" + lfuCode + " with freq=" + minFreq + ", time=" + oldestTime);
+            return lfuCode;
+        }
+
+        void remove(int code) {
+            frequency.remove(code);
+            timestamp.remove(code);
+            debug("LFUTrackerDecoder.remove(code=" + code + "), mapSize=" + frequency.size());
+        }
+
+        void printState() {
+            debug("LFUTrackerDecoder state (size=" + frequency.size() + "):");
+            List<Map.Entry<Integer, Integer>> entries = new ArrayList<>(frequency.entrySet());
+            entries.sort((e1, e2) -> {
+                int freqCmp = e1.getValue().compareTo(e2.getValue());
+                if (freqCmp != 0) return freqCmp;
+                return timestamp.get(e1.getKey()).compareTo(timestamp.get(e2.getKey()));
+            });
+            for (Map.Entry<Integer, Integer> entry : entries) {
+                debug("  code=" + entry.getKey() + " -> freq=" + entry.getValue() +
+                      ", time=" + timestamp.get(entry.getKey()));
+            }
+        }
+    }
+
     private static void debug(String msg) {
         if (DEBUG) System.err.println("[DEBUG] " + msg);
     }
@@ -157,8 +291,8 @@ public class LZWTool {
         }
     }
 
-    public static void main(String[] args) { 
-        
+    public static void main(String[] args) {
+
         parseArguments(args);
 
         if (mode.equals("compress")) {
@@ -273,6 +407,7 @@ public class LZWTool {
 
         boolean resetPolicy = policy.equals("reset");
         boolean lruPolicy = policy.equals("lru");
+        boolean lfuPolicy = policy.equals("lfu");
 
         int RESET_CODE = -1;
         if (resetPolicy) {
@@ -287,6 +422,12 @@ public class LZWTool {
         LRUTracker lruTracker = null;
         if (lruPolicy) {
             lruTracker = new LRUTracker(maxCode);
+        }
+
+        // LFU tracking structure
+        LFUTracker lfuTracker = null;
+        if (lfuPolicy) {
+            lfuTracker = new LFUTracker(maxCode);
         }
 
         // Preload alphabet for reuse in reset mode
@@ -347,6 +488,14 @@ public class LZWTool {
                     }
                 }
 
+                // Update LFU: mark this code as recently used (only if it's already tracked)
+                if (lfuPolicy) {
+                    String currentStr = current.toString();
+                    if (lfuTracker.contains(currentStr)) {
+                        lfuTracker.use(currentStr);
+                    }
+                }
+
                 if (nextCode < maxCode) {
                     if (nextCode >= (1 << W) && W < maxW) {
                         W++;
@@ -365,6 +514,18 @@ public class LZWTool {
                         }
                     }
 
+                    // LFU policy: evict if at capacity BEFORE adding new entry
+                    if (lfuPolicy && nextCode == maxCode - 1) {
+                        debug("LFU: At capacity, need to evict");
+                        lfuTracker.printState();
+                        String lfuEntry = lfuTracker.findLFU();
+                        if (lfuEntry != null) {
+                            debug("EVICTING: '" + escapeString(lfuEntry) + "'");
+                            dictionary.put(new StringBuilder(lfuEntry), null);
+                            lfuTracker.remove(lfuEntry);
+                        }
+                    }
+
                     String nextStr = next.toString();
                     debug("ADDING to codebook: '" + escapeString(nextStr) + "' -> code " + nextCode);
                     dictionary.put(next, nextCode);
@@ -372,6 +533,11 @@ public class LZWTool {
                     // Add new entry to LRU tracker
                     if (lruPolicy) {
                         lruTracker.use(nextStr);
+                    }
+
+                    // Add new entry to LFU tracker
+                    if (lfuPolicy) {
+                        lfuTracker.use(nextStr);
                     }
 
                     nextCode++;
@@ -418,6 +584,13 @@ public class LZWTool {
                     lruTracker.use(currentStr);
                 }
             }
+
+            if (lfuPolicy) {
+                String currentStr = current.toString();
+                if (lfuTracker.contains(currentStr)) {
+                    lfuTracker.use(currentStr);
+                }
+            }
         }
 
         if (nextCode >= (1 << W) && W < maxW) {
@@ -431,6 +604,11 @@ public class LZWTool {
         if (lruPolicy) {
             debug("\nFinal LRU state:");
             lruTracker.printState();
+        }
+
+        if (lfuPolicy) {
+            debug("\nFinal LFU state:");
+            lfuTracker.printState();
         }
 
         debug("\n=== COMPRESSION COMPLETE ===\n");
@@ -450,6 +628,7 @@ public class LZWTool {
         int RESET_CODE = -1;
         boolean resetPolicy = (h.policy == 1);
         boolean lruPolicy = (h.policy == 2);
+        boolean lfuPolicy = (h.policy == 3);
 
         int initialNextCode;
         if (resetPolicy) {
@@ -470,6 +649,12 @@ public class LZWTool {
         LRUTrackerDecoder lruTracker = null;
         if (lruPolicy) {
             lruTracker = new LRUTrackerDecoder(maxCode);
+        }
+
+        // LFU tracking structure for expansion
+        LFUTrackerDecoder lfuTracker = null;
+        if (lfuPolicy) {
+            lfuTracker = new LFUTrackerDecoder(maxCode);
         }
 
         String[] dictionary = new String[maxCode];
@@ -580,6 +765,18 @@ public class LZWTool {
                     }
                 }
 
+                // LFU: evict if at capacity BEFORE adding new entry
+                if (lfuPolicy && nextCode == maxCode - 1) {
+                    debug("LFU: At capacity, need to evict");
+                    lfuTracker.printState();
+                    int lfuCode = lfuTracker.findLFU();
+                    if (lfuCode != -1) {
+                        debug("EVICTING: code=" + lfuCode + " (was '" + escapeString(dictionary[lfuCode]) + "')");
+                        dictionary[lfuCode] = null;
+                        lfuTracker.remove(lfuCode);
+                    }
+                }
+
                 String newEntry = valPrior + s.charAt(0);
                 debug("ADDING to table: code " + nextCode + " -> '" + escapeString(newEntry) + "'");
                 dictionary[nextCode] = newEntry;
@@ -587,6 +784,11 @@ public class LZWTool {
                 // Track in LRU
                 if (lruPolicy) {
                     lruTracker.use(nextCode);
+                }
+
+                // Track in LFU
+                if (lfuPolicy) {
+                    lfuTracker.use(nextCode);
                 }
 
                 nextCode++;
@@ -599,12 +801,22 @@ public class LZWTool {
                 lruTracker.use(codeword);
             }
 
+            // Update LFU tracker for the used code AFTER adding new entry (only track non-alphabet codes)
+            if (lfuPolicy && codeword >= alphabetSize + 1) {
+                lfuTracker.use(codeword);
+            }
+
             valPrior = s;
         }
 
         if (lruPolicy) {
             debug("\nFinal LRU state:");
             lruTracker.printState();
+        }
+
+        if (lfuPolicy) {
+            debug("\nFinal LFU state:");
+            lfuTracker.printState();
         }
 
         debug("\n=== DECOMPRESSION COMPLETE ===\n");
@@ -615,10 +827,10 @@ public class LZWTool {
     //============================================
     // Header Stuff
     // ===========================================
-    
+
     private static class Header {
-        int minW; 
-        int maxW; 
+        int minW;
+        int maxW;
         int policy; // Eviction policy code (0=freeze, 1=reset, 2=lru, 3=lfu)
         List<Character> alphabet; // char because we only use extended ascii as max dictionary, which fits in 1 byte
         int alphabetSize;
@@ -628,18 +840,18 @@ public class LZWTool {
      * Write the header to the compressed output stream.
      * The header contains all information needed to decompress the file:
      * - Codeword width parameters (minW, maxW)
-     * - Eviction policy 
+     * - Eviction policy
      * - The complete alphabet
-     * 
+     *
      * 8 bits for each for convenience
-     * 
+     *
      * Header format (in order):
      * 1. minW (8 bits, up to 2^8 = 256)
      * 2. maxW (8 bits, up to 2^8 = 256)
      * 3. policy code (8 bits): 0=freeze, 1=reset, 2=lru, 3=lfu
      * 4. alphabet size (16 bits): allows up to 65535 symbols
      * 5. alphabet symbols (8 bits each): raw byte value of each character
-     * 
+     *
      * Alphabet needs only 1 byte, because the max alphabet we have is extended ascii
      *
      * @param minW     minimum codeword width in bits
