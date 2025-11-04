@@ -1,3 +1,4 @@
+// O(1) LRU LFU
 import java.io.*;
 import java.util.*;
 
@@ -25,36 +26,53 @@ public class LZWTool {
 
     private static final boolean DEBUG = false; // Set to false to disable debug output
 
-    // Optimized LRU tracking using timestamps and HashMap for compression
+    // O(1) LRU tracking using doubly-linked list + HashMap for compression
     private static class LRUTracker {
-        private final HashMap<String, Integer> map;
-        private int timestamp = 0;
+        private class Node {
+            String key;
+            Node prev, next;
+            Node(String key) { this.key = key; }
+        }
+
+        private final HashMap<String, Node> map;
+        private final Node head, tail; // Sentinels: head.next = MRU, tail.prev = LRU
 
         LRUTracker(int capacity) {
             this.map = new HashMap<>(capacity);
+            this.head = new Node(null);
+            this.tail = new Node(null);
+            head.next = tail;
+            tail.prev = head;
             debug("LRUTracker initialized with capacity: " + capacity);
         }
 
         void use(String key) {
-            map.put(key, timestamp++);
-            debug("LRUTracker.use('" + escapeString(key) + "') timestamp=" + (timestamp-1) + ", mapSize=" + map.size());
+            Node node = map.get(key);
+            if (node != null) {
+                // Move to front (most recently used)
+                removeNode(node);
+                addToFront(node);
+            } else {
+                // New entry
+                node = new Node(key);
+                map.put(key, node);
+                addToFront(node);
+            }
+            debug("LRUTracker.use('" + escapeString(key) + "'), mapSize=" + map.size());
         }
 
         String findLRU() {
-            String lruKey = null;
-            int minTimestamp = Integer.MAX_VALUE;
-            for (Map.Entry<String, Integer> entry : map.entrySet()) {
-                if (entry.getValue() < minTimestamp) {
-                    minTimestamp = entry.getValue();
-                    lruKey = entry.getKey();
-                }
-            }
-            debug("LRUTracker.findLRU() -> '" + escapeString(lruKey) + "' with timestamp=" + minTimestamp);
+            if (tail.prev == head) return null; // Empty
+            String lruKey = tail.prev.key;
+            debug("LRUTracker.findLRU() -> '" + escapeString(lruKey) + "'");
             return lruKey;
         }
 
         void remove(String key) {
-            map.remove(key);
+            Node node = map.remove(key);
+            if (node != null) {
+                removeNode(node);
+            }
             debug("LRUTracker.remove('" + escapeString(key) + "'), mapSize=" + map.size());
         }
 
@@ -62,189 +80,306 @@ public class LZWTool {
             return map.containsKey(key);
         }
 
+        private void addToFront(Node node) {
+            node.next = head.next;
+            node.prev = head;
+            head.next.prev = node;
+            head.next = node;
+        }
+
+        private void removeNode(Node node) {
+            node.prev.next = node.next;
+            node.next.prev = node.prev;
+        }
+
         void printState() {
             debug("LRUTracker state (size=" + map.size() + "):");
-            List<Map.Entry<String, Integer>> entries = new ArrayList<>(map.entrySet());
-            entries.sort(Map.Entry.comparingByValue());
-            for (Map.Entry<String, Integer> entry : entries) {
-                debug("  '" + escapeString(entry.getKey()) + "' -> timestamp=" + entry.getValue());
+            Node current = head.next;
+            while (current != tail) {
+                debug("  '" + escapeString(current.key) + "'");
+                current = current.next;
             }
         }
     }
 
-    // Optimized LRU tracker for decoder (uses Integer keys for codes)
+    // O(1) LRU tracker for decoder (uses Integer keys for codes)
     private static class LRUTrackerDecoder {
-        private final HashMap<Integer, Integer> map;
-        private int timestamp = 0;
+        private class Node {
+            int code;
+            Node prev, next;
+            Node(int code) { this.code = code; }
+        }
+
+        private final HashMap<Integer, Node> map;
+        private final Node head, tail; // Sentinels: head.next = MRU, tail.prev = LRU
 
         LRUTrackerDecoder(int capacity) {
             this.map = new HashMap<>(capacity);
+            this.head = new Node(-1);
+            this.tail = new Node(-1);
+            head.next = tail;
+            tail.prev = head;
             debug("LRUTrackerDecoder initialized with capacity: " + capacity);
         }
 
         void use(int code) {
-            map.put(code, timestamp++);
-            debug("LRUTrackerDecoder.use(code=" + code + ") timestamp=" + (timestamp-1) + ", mapSize=" + map.size());
+            Node node = map.get(code);
+            if (node != null) {
+                // Move to front (most recently used)
+                removeNode(node);
+                addToFront(node);
+            } else {
+                // New entry
+                node = new Node(code);
+                map.put(code, node);
+                addToFront(node);
+            }
+            debug("LRUTrackerDecoder.use(code=" + code + "), mapSize=" + map.size());
         }
 
         int findLRU() {
-            int lruCode = -1;
-            int minTimestamp = Integer.MAX_VALUE;
-            for (Map.Entry<Integer, Integer> entry : map.entrySet()) {
-                if (entry.getValue() < minTimestamp) {
-                    minTimestamp = entry.getValue();
-                    lruCode = entry.getKey();
-                }
-            }
-            debug("LRUTrackerDecoder.findLRU() -> code=" + lruCode + " with timestamp=" + minTimestamp);
+            if (tail.prev == head) return -1; // Empty
+            int lruCode = tail.prev.code;
+            debug("LRUTrackerDecoder.findLRU() -> code=" + lruCode);
             return lruCode;
         }
 
         void remove(int code) {
-            map.remove(code);
+            Node node = map.remove(code);
+            if (node != null) {
+                removeNode(node);
+            }
             debug("LRUTrackerDecoder.remove(code=" + code + "), mapSize=" + map.size());
+        }
+
+        private void addToFront(Node node) {
+            node.next = head.next;
+            node.prev = head;
+            head.next.prev = node;
+            head.next = node;
+        }
+
+        private void removeNode(Node node) {
+            node.prev.next = node.next;
+            node.next.prev = node.prev;
         }
 
         void printState() {
             debug("LRUTrackerDecoder state (size=" + map.size() + "):");
-            List<Map.Entry<Integer, Integer>> entries = new ArrayList<>(map.entrySet());
-            entries.sort(Map.Entry.comparingByValue());
-            for (Map.Entry<Integer, Integer> entry : entries) {
-                debug("  code=" + entry.getKey() + " -> timestamp=" + entry.getValue());
+            Node current = head.next;
+            while (current != tail) {
+                debug("  code=" + current.code);
+                current = current.next;
             }
         }
     }
 
-    // LFU tracking for compression using frequency counts
+    // O(1) LFU tracking using frequency buckets + doubly-linked lists
     private static class LFUTracker {
-        // Store frequency count for each key
-        private final HashMap<String, Integer> frequency;
-        // Store insertion/update timestamp for tie-breaking
-        private final HashMap<String, Integer> timestamp;
-        private int currentTime = 0;
+        private class Node {
+            String key;
+            int freq;
+            Node prev, next;
+            Node(String key, int freq) { this.key = key; this.freq = freq; }
+        }
+
+        private class FreqList {
+            Node head, tail; // Sentinels
+            FreqList() {
+                head = new Node(null, 0);
+                tail = new Node(null, 0);
+                head.next = tail;
+                tail.prev = head;
+            }
+            void addToFront(Node node) {
+                node.next = head.next;
+                node.prev = head;
+                head.next.prev = node;
+                head.next = node;
+            }
+            void remove(Node node) {
+                node.prev.next = node.next;
+                node.next.prev = node.prev;
+            }
+            boolean isEmpty() {
+                return head.next == tail;
+            }
+            Node getFirst() {
+                return head.next == tail ? null : head.next;
+            }
+        }
+
+        private final HashMap<String, Node> keyToNode;
+        private final HashMap<Integer, FreqList> freqToList;
+        private int minFreq;
 
         LFUTracker(int capacity) {
-            this.frequency = new HashMap<>(capacity);
-            this.timestamp = new HashMap<>(capacity);
+            this.keyToNode = new HashMap<>(capacity);
+            this.freqToList = new HashMap<>();
+            this.minFreq = 0;
             debug("LFUTracker initialized with capacity: " + capacity);
         }
 
         void use(String key) {
-            // Increment frequency (or set to 1 if new)
-            frequency.put(key, frequency.getOrDefault(key, 0) + 1);
-            // Update timestamp for tie-breaking
-            timestamp.put(key, currentTime++);
-            debug("LFUTracker.use('" + escapeString(key) + "') freq=" + frequency.get(key) +
-                  ", time=" + (currentTime-1) + ", mapSize=" + frequency.size());
+            Node node = keyToNode.get(key);
+            if (node == null) {
+                // New key: add with frequency 1
+                node = new Node(key, 1);
+                keyToNode.put(key, node);
+                freqToList.computeIfAbsent(1, k -> new FreqList()).addToFront(node);
+                minFreq = 1;
+                debug("LFUTracker.use('" + escapeString(key) + "') NEW freq=1, mapSize=" + keyToNode.size());
+            } else {
+                // Existing key: increment frequency
+                int oldFreq = node.freq;
+                FreqList oldList = freqToList.get(oldFreq);
+                oldList.remove(node);
+
+                // Update minFreq if needed
+                if (oldFreq == minFreq && oldList.isEmpty()) {
+                    minFreq = oldFreq + 1;
+                }
+
+                node.freq++;
+                freqToList.computeIfAbsent(node.freq, k -> new FreqList()).addToFront(node);
+                debug("LFUTracker.use('" + escapeString(key) + "') freq=" + node.freq + ", mapSize=" + keyToNode.size());
+            }
         }
 
         String findLFU() {
-            String lfuKey = null;
-            int minFreq = Integer.MAX_VALUE;
-            int oldestTime = Integer.MAX_VALUE;
-
-            for (Map.Entry<String, Integer> entry : frequency.entrySet()) {
-                String key = entry.getKey();
-                int freq = entry.getValue();
-                int time = timestamp.get(key);
-
-                // Find least frequently used, break ties by oldest timestamp
-                if (freq < minFreq || (freq == minFreq && time < oldestTime)) {
-                    minFreq = freq;
-                    oldestTime = time;
-                    lfuKey = key;
-                }
-            }
-            debug("LFUTracker.findLFU() -> '" + escapeString(lfuKey) + "' with freq=" + minFreq + ", time=" + oldestTime);
-            return lfuKey;
+            FreqList minList = freqToList.get(minFreq);
+            if (minList == null || minList.isEmpty()) return null;
+            Node lfuNode = minList.getFirst();
+            debug("LFUTracker.findLFU() -> '" + escapeString(lfuNode.key) + "' with freq=" + lfuNode.freq);
+            return lfuNode.key;
         }
 
         void remove(String key) {
-            frequency.remove(key);
-            timestamp.remove(key);
-            debug("LFUTracker.remove('" + escapeString(key) + "'), mapSize=" + frequency.size());
+            Node node = keyToNode.remove(key);
+            if (node != null) {
+                FreqList list = freqToList.get(node.freq);
+                list.remove(node);
+                debug("LFUTracker.remove('" + escapeString(key) + "'), mapSize=" + keyToNode.size());
+            }
         }
 
         boolean contains(String key) {
-            return frequency.containsKey(key);
+            return keyToNode.containsKey(key);
         }
 
         void printState() {
-            debug("LFUTracker state (size=" + frequency.size() + "):");
-            List<Map.Entry<String, Integer>> entries = new ArrayList<>(frequency.entrySet());
-            entries.sort((e1, e2) -> {
-                int freqCmp = e1.getValue().compareTo(e2.getValue());
-                if (freqCmp != 0) return freqCmp;
-                return timestamp.get(e1.getKey()).compareTo(timestamp.get(e2.getKey()));
-            });
-            for (Map.Entry<String, Integer> entry : entries) {
-                debug("  '" + escapeString(entry.getKey()) + "' -> freq=" + entry.getValue() +
-                      ", time=" + timestamp.get(entry.getKey()));
+            debug("LFUTracker state (size=" + keyToNode.size() + ", minFreq=" + minFreq + "):");
+            for (Map.Entry<Integer, FreqList> entry : freqToList.entrySet()) {
+                int freq = entry.getKey();
+                FreqList list = entry.getValue();
+                Node current = list.head.next;
+                while (current != list.tail) {
+                    debug("  '" + escapeString(current.key) + "' -> freq=" + freq);
+                    current = current.next;
+                }
             }
         }
     }
 
-    // LFU tracker for decoder (uses Integer keys for codes)
+    // O(1) LFU tracker for decoder (uses Integer keys for codes)
     private static class LFUTrackerDecoder {
-        // Store frequency count for each code
-        private final HashMap<Integer, Integer> frequency;
-        // Store insertion/update timestamp for tie-breaking
-        private final HashMap<Integer, Integer> timestamp;
-        private int currentTime = 0;
+        private class Node {
+            int code;
+            int freq;
+            Node prev, next;
+            Node(int code, int freq) { this.code = code; this.freq = freq; }
+        }
+
+        private class FreqList {
+            Node head, tail; // Sentinels
+            FreqList() {
+                head = new Node(-1, 0);
+                tail = new Node(-1, 0);
+                head.next = tail;
+                tail.prev = head;
+            }
+            void addToFront(Node node) {
+                node.next = head.next;
+                node.prev = head;
+                head.next.prev = node;
+                head.next = node;
+            }
+            void remove(Node node) {
+                node.prev.next = node.next;
+                node.next.prev = node.prev;
+            }
+            boolean isEmpty() {
+                return head.next == tail;
+            }
+            Node getFirst() {
+                return head.next == tail ? null : head.next;
+            }
+        }
+
+        private final HashMap<Integer, Node> codeToNode;
+        private final HashMap<Integer, FreqList> freqToList;
+        private int minFreq;
 
         LFUTrackerDecoder(int capacity) {
-            this.frequency = new HashMap<>(capacity);
-            this.timestamp = new HashMap<>(capacity);
+            this.codeToNode = new HashMap<>(capacity);
+            this.freqToList = new HashMap<>();
+            this.minFreq = 0;
             debug("LFUTrackerDecoder initialized with capacity: " + capacity);
         }
 
         void use(int code) {
-            // Increment frequency (or set to 1 if new)
-            frequency.put(code, frequency.getOrDefault(code, 0) + 1);
-            // Update timestamp for tie-breaking
-            timestamp.put(code, currentTime++);
-            debug("LFUTrackerDecoder.use(code=" + code + ") freq=" + frequency.get(code) +
-                  ", time=" + (currentTime-1) + ", mapSize=" + frequency.size());
+            Node node = codeToNode.get(code);
+            if (node == null) {
+                // New code: add with frequency 1
+                node = new Node(code, 1);
+                codeToNode.put(code, node);
+                freqToList.computeIfAbsent(1, k -> new FreqList()).addToFront(node);
+                minFreq = 1;
+                debug("LFUTrackerDecoder.use(code=" + code + ") NEW freq=1, mapSize=" + codeToNode.size());
+            } else {
+                // Existing code: increment frequency
+                int oldFreq = node.freq;
+                FreqList oldList = freqToList.get(oldFreq);
+                oldList.remove(node);
+
+                // Update minFreq if needed
+                if (oldFreq == minFreq && oldList.isEmpty()) {
+                    minFreq = oldFreq + 1;
+                }
+
+                node.freq++;
+                freqToList.computeIfAbsent(node.freq, k -> new FreqList()).addToFront(node);
+                debug("LFUTrackerDecoder.use(code=" + code + ") freq=" + node.freq + ", mapSize=" + codeToNode.size());
+            }
         }
 
         int findLFU() {
-            int lfuCode = -1;
-            int minFreq = Integer.MAX_VALUE;
-            int oldestTime = Integer.MAX_VALUE;
-
-            for (Map.Entry<Integer, Integer> entry : frequency.entrySet()) {
-                int code = entry.getKey();
-                int freq = entry.getValue();
-                int time = timestamp.get(code);
-
-                // Find least frequently used, break ties by oldest timestamp
-                if (freq < minFreq || (freq == minFreq && time < oldestTime)) {
-                    minFreq = freq;
-                    oldestTime = time;
-                    lfuCode = code;
-                }
-            }
-            debug("LFUTrackerDecoder.findLFU() -> code=" + lfuCode + " with freq=" + minFreq + ", time=" + oldestTime);
-            return lfuCode;
+            FreqList minList = freqToList.get(minFreq);
+            if (minList == null || minList.isEmpty()) return -1;
+            Node lfuNode = minList.getFirst();
+            debug("LFUTrackerDecoder.findLFU() -> code=" + lfuNode.code + " with freq=" + lfuNode.freq);
+            return lfuNode.code;
         }
 
         void remove(int code) {
-            frequency.remove(code);
-            timestamp.remove(code);
-            debug("LFUTrackerDecoder.remove(code=" + code + "), mapSize=" + frequency.size());
+            Node node = codeToNode.remove(code);
+            if (node != null) {
+                FreqList list = freqToList.get(node.freq);
+                list.remove(node);
+                debug("LFUTrackerDecoder.remove(code=" + code + "), mapSize=" + codeToNode.size());
+            }
         }
 
         void printState() {
-            debug("LFUTrackerDecoder state (size=" + frequency.size() + "):");
-            List<Map.Entry<Integer, Integer>> entries = new ArrayList<>(frequency.entrySet());
-            entries.sort((e1, e2) -> {
-                int freqCmp = e1.getValue().compareTo(e2.getValue());
-                if (freqCmp != 0) return freqCmp;
-                return timestamp.get(e1.getKey()).compareTo(timestamp.get(e2.getKey()));
-            });
-            for (Map.Entry<Integer, Integer> entry : entries) {
-                debug("  code=" + entry.getKey() + " -> freq=" + entry.getValue() +
-                      ", time=" + timestamp.get(entry.getKey()));
+            debug("LFUTrackerDecoder state (size=" + codeToNode.size() + ", minFreq=" + minFreq + "):");
+            for (Map.Entry<Integer, FreqList> entry : freqToList.entrySet()) {
+                int freq = entry.getKey();
+                FreqList list = entry.getValue();
+                Node current = list.head.next;
+                while (current != list.tail) {
+                    debug("  code=" + current.code + " -> freq=" + freq);
+                    current = current.next;
+                }
             }
         }
     }
@@ -914,3 +1049,4 @@ public class LZWTool {
     }
 
 }
+
