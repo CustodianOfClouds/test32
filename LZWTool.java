@@ -524,7 +524,12 @@ public class LZWTool {
         int maxCode = 1 << maxW;
         int alphabetSize = alphabet.size();
 
-        Set<Character> alphabetSet = new HashSet<>(alphabet);
+        // O(1) alphabet validation using boolean array instead of HashSet
+        boolean[] validChar = new boolean[256]; // Extended ASCII
+        for (Character symbol : alphabet) {
+            validChar[symbol] = true;
+        }
+
         int nextCode = 0;
         StringBuilder sb = new StringBuilder(1);
 
@@ -582,7 +587,7 @@ public class LZWTool {
         }
 
         char c = BinaryStdIn.readChar();
-        if (!alphabetSet.contains(c)) {
+        if (!validChar[c]) {
             System.err.println("Error: Input contains byte value " + (int) c + " which is not in the alphabet");
             System.exit(1);
         }
@@ -595,10 +600,13 @@ public class LZWTool {
         // Reusable StringBuilder for concatenation
         StringBuilder nextBuilder = new StringBuilder(256);
 
+        // Cache bit width threshold to avoid recalculating (1 << W)
+        int widthThreshold = 1 << W;
+
         while (!BinaryStdIn.isEmpty()) {
 
             c = BinaryStdIn.readChar();
-            if (!alphabetSet.contains(c)) {
+            if (!validChar[c]) {
                 System.err.println("Error: Input contains byte value " + (int) c + " which is not in the alphabet");
                 System.exit(1);
             }
@@ -641,8 +649,9 @@ public class LZWTool {
                 }
 
                 if (nextCode < maxCode) {
-                    if (nextCode >= (1 << W) && W < maxW) {
+                    if (nextCode >= widthThreshold && W < maxW) {
                         W++;
+                        widthThreshold = 1 << W;  // Update cached threshold
                         debug("Increased W to " + W);
                     }
 
@@ -701,8 +710,9 @@ public class LZWTool {
                     // Dictionary full
                     if (resetPolicy) {
                         debug("RESET policy: codebook full");
-                        if (nextCode >= (1 << W) && W < maxW) {
+                        if (nextCode >= widthThreshold && W < maxW) {
                             W++;
+                            widthThreshold = 1 << W;
                             debug("Increased W to " + W);
                         }
                         debug("OUTPUT RESET_CODE: " + RESET_CODE + " (W=" + W + " bits)");
@@ -715,6 +725,7 @@ public class LZWTool {
 
                         nextCode = initialNextCode;
                         W = minW;
+                        widthThreshold = 1 << W;  // Reset cached threshold
                         debug("Reset complete: nextCode=" + nextCode + ", W=" + W);
                     } else {
                         debug("FREEZE policy: codebook full, no action");
@@ -750,8 +761,9 @@ public class LZWTool {
             }
         }
 
-        if (nextCode >= (1 << W) && W < maxW) {
+        if (nextCode >= widthThreshold && W < maxW) {
             W++;
+            widthThreshold = 1 << W;
             debug("Increased W to " + W + " for EOF_CODE");
         }
 
@@ -850,10 +862,15 @@ public class LZWTool {
 
         int step = 0;
         debug("\n=== DECODING LOOP ===");
+
+        // Cache bit width threshold to avoid recalculating (1 << W)
+        int widthThreshold = 1 << W;
+
         while (!BinaryStdIn.isEmpty()) {
 
-            if (nextCode >= (1 << W) && W < h.maxW) {
+            if (nextCode >= widthThreshold && W < h.maxW) {
                 W++;
+                widthThreshold = 1 << W;
                 debug("Increased W to " + W);
             }
 
@@ -875,6 +892,7 @@ public class LZWTool {
 
                 nextCode = initialNextCode;
                 W = h.minW;
+                widthThreshold = 1 << W;  // Reset cached threshold
                 debug("Reset complete: nextCode=" + nextCode + ", W=" + W);
 
                 codeword = BinaryStdIn.readInt(W);
