@@ -395,9 +395,20 @@ public class LZWTool {
 
     // commandline args
     private static void validateCompressionArgs() {
-        if (alphabetPath == null || minW > maxW) {
-            System.err.println("Error: Invalid arguments for compression");
+        if (alphabetPath == null) {
+            System.err.println("Missing required argument: --alphabet is required for compression mode");
             System.exit(1);
+        }
+        if (minW < 1) {
+            System.err.println("Invalid argument: --minW must be at least 1 (cannot write 0-bit codewords)");
+            System.exit(1);
+        }
+        if (maxW < minW) {
+            System.err.println("Invalid argument: --maxW (" + maxW + ") must be >= --minW (" + minW + ")");
+            System.exit(1);
+        }
+        if (maxW > 32) {
+            System.err.println("Warning: --maxW (" + maxW + ") is very large, may cause issues");
         }
     }
 
@@ -405,22 +416,52 @@ public class LZWTool {
         for (int i = 0; i < args.length; i++) {
             switch (args[i]) {
                 case "--mode":
+                    if (i + 1 >= args.length) {
+                        System.err.println("Missing value for argument: --mode requires a value (compress or expand)");
+                        System.exit(1);
+                    }
                     mode = args[++i];
                     break;
                 case "--minW":
-                    minW = Integer.parseInt(args[++i]);
+                    if (i + 1 >= args.length) {
+                        System.err.println("Missing value for argument: --minW requires a numeric value");
+                        System.exit(1);
+                    }
+                    try {
+                        minW = Integer.parseInt(args[++i]);
+                    } catch (NumberFormatException e) {
+                        System.err.println("Invalid value for --minW: '" + args[i] + "' is not a valid integer");
+                        System.exit(1);
+                    }
                     break;
                 case "--maxW":
-                    maxW = Integer.parseInt(args[++i]);
+                    if (i + 1 >= args.length) {
+                        System.err.println("Missing value for argument: --maxW requires a numeric value");
+                        System.exit(1);
+                    }
+                    try {
+                        maxW = Integer.parseInt(args[++i]);
+                    } catch (NumberFormatException e) {
+                        System.err.println("Invalid value for --maxW: '" + args[i] + "' is not a valid integer");
+                        System.exit(1);
+                    }
                     break;
                 case "--policy":
+                    if (i + 1 >= args.length) {
+                        System.err.println("Missing value for argument: --policy requires a value (freeze, reset, lru, or lfu)");
+                        System.exit(1);
+                    }
                     policy = args[++i];
                     break;
                 case "--alphabet":
+                    if (i + 1 >= args.length) {
+                        System.err.println("Missing value for argument: --alphabet requires a file path");
+                        System.exit(1);
+                    }
                     alphabetPath = args[++i];
                     break;
                 default:
-                    System.err.println("Unknown argument: " + args[i]);
+                    System.err.println("Unknown argument: '" + args[i] + "' is not a recognized option");
                     System.exit(2);
             }
         }
@@ -428,7 +469,19 @@ public class LZWTool {
 
     public static void main(String[] args) {
 
+        if (args.length == 0) {
+            System.err.println("No arguments provided. Usage:");
+            System.err.println("  Compress: java LZWTool --mode compress --alphabet <file> [--minW <n>] [--maxW <n>] [--policy <name>]");
+            System.err.println("  Expand:   java LZWTool --mode expand");
+            System.exit(1);
+        }
+
         parseArguments(args);
+
+        if (mode == null) {
+            System.err.println("Missing required argument: --mode must be specified (compress or expand)");
+            System.exit(1);
+        }
 
         if (mode.equals("compress")) {
             validateCompressionArgs();
@@ -437,7 +490,12 @@ public class LZWTool {
             List<Character> alphabet = loadAlphabet(alphabetPath);
 
             if (alphabet == null) {
-                System.err.println("Error: Could not load alphabet from " + alphabetPath);
+                System.err.println("Failed to load alphabet: Could not read file '" + alphabetPath + "' (file may not exist or is not readable)");
+                System.exit(1);
+            }
+
+            if (alphabet.size() == 0) {
+                System.err.println("Invalid alphabet: Alphabet file '" + alphabetPath + "' contains no valid characters");
                 System.exit(1);
             }
 
@@ -448,26 +506,28 @@ public class LZWTool {
             // we pipe raw binary data out during expand
             expand();
         } else {
-            System.err.println("Error: --mode must be 'compress' or 'expand'");
+            System.err.println("Invalid value for --mode: '" + mode + "' is not valid (must be 'compress' or 'expand')");
             System.exit(1);
         }
     }
 
     private static List<Character> loadAlphabet(String path) {
 
-        List<Character> alphabet = new ArrayList<>();
+        // Pre-allocate with max extended ASCII size
+        List<Character> alphabet = new ArrayList<>(256);
 
-        // LinkedHashSet preserves insertion order while ensuring uniqueness
-        Set<Character> seen = new LinkedHashSet<>();
+        // Use boolean array instead of HashSet for O(1) lookup without boxing overhead
+        boolean[] seen = new boolean[256];
 
         // Always hardcode include CR and LF in the alphabet
-        alphabet.add('\r'); seen.add('\r');
-        alphabet.add('\n'); seen.add('\n');
+        alphabet.add('\r'); seen['\r'] = true;
+        alphabet.add('\n'); seen['\n'] = true;
 
         // our extended ascii dictionary is stored in UTF-8 bruh so we gotta read it in UTF-8 before converting into 1 byte chars
         try (InputStreamReader reader = new InputStreamReader(new FileInputStream(path), "UTF-8")) {
 
-            StringBuilder lineBuffer = new StringBuilder(); // stores all chars of current line until newline
+            // Pre-allocate with typical line length
+            StringBuilder lineBuffer = new StringBuilder(16); // stores all chars of current line until newline
             int c; // Current character being read
 
             // Read character by character to handle line endings precisely
@@ -475,14 +535,16 @@ public class LZWTool {
                 if (c == '\n') {
                     // Found a line ending - process the line (if not, see else)
 
-                    // Extract symbol - empty line = null, otherwise first char
-                    // symbol can only be null on LF systems, not CRLF or CR only systems
-                    Character symbol = (lineBuffer.length() == 0) ? null : lineBuffer.charAt(0);
+                    // Extract symbol - empty line skipped, otherwise first char
+                    // Use primitive char to avoid boxing overhead
+                    if (lineBuffer.length() > 0) {
+                        char symbol = lineBuffer.charAt(0);
 
-                    // Add to alphabet only if we haven't seen it before
-                    if (symbol != null && !seen.contains(symbol)) {
-                        seen.add(symbol);
-                        alphabet.add(symbol);
+                        // Add to alphabet only if we haven't seen it before
+                        if (!seen[symbol]) {
+                            seen[symbol] = true;
+                            alphabet.add(symbol);
+                        }
                     }
 
                     // Reset buffer for next line
@@ -496,10 +558,10 @@ public class LZWTool {
             // Handle last line if file doesn't end with newline
             if (lineBuffer.length() > 0) {
 
-                // Extract first character as symbol
-                Character symbol = lineBuffer.charAt(0);
-                if (!seen.contains(symbol)) {
-                    seen.add(symbol);
+                // Extract first character as symbol (use primitive char)
+                char symbol = lineBuffer.charAt(0);
+                if (!seen[symbol]) {
+                    seen[symbol] = true;
                     alphabet.add(symbol);
                 }
             }
@@ -588,7 +650,7 @@ public class LZWTool {
 
         char c = BinaryStdIn.readChar();
         if (!validChar[c]) {
-            System.err.println("Error: Input contains byte value " + (int) c + " which is not in the alphabet");
+            System.err.println("Input contains byte value " + (int) c + " which is not in the alphabet");
             System.exit(1);
         }
         StringBuilder current = new StringBuilder().append(c);
@@ -607,7 +669,7 @@ public class LZWTool {
 
             c = BinaryStdIn.readChar();
             if (!validChar[c]) {
-                System.err.println("Error: Input contains byte value " + (int) c + " which is not in the alphabet");
+                System.err.println("Input contains byte value " + (int) c + " which is not in the alphabet");
                 System.exit(1);
             }
 
@@ -1059,13 +1121,14 @@ public class LZWTool {
         }
         BinaryStdOut.write(policyCode, 8);
 
-        // Write base alphabet size (allows decoder to know how many symbols to read)
-        BinaryStdOut.write(alphabet.size(), 16);
+        // Cache alphabet size to avoid multiple method calls
+        int alphabetSize = alphabet.size();
+        BinaryStdOut.write(alphabetSize, 16);
 
         // Write each symbol as a single byte (char value)
+        // No null check needed - alphabet should never contain null by design
         for (Character symbol : alphabet) {
-             // added ternary 0 check, technically should never happen
-            BinaryStdOut.write(symbol != null ? symbol : 0, 8);
+            BinaryStdOut.write(symbol, 8);
         }
     }
 
@@ -1080,7 +1143,8 @@ public class LZWTool {
         int alphabetSize = BinaryStdIn.readInt(16);
         header.alphabetSize = alphabetSize;
 
-        header.alphabet = new ArrayList<>();
+        // Pre-allocate ArrayList with known size to avoid resizing
+        header.alphabet = new ArrayList<>(alphabetSize);
         for (int i = 0; i < alphabetSize; i++) {
             header.alphabet.add(BinaryStdIn.readChar(8));
         }
