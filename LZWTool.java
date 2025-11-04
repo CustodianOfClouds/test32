@@ -455,19 +455,21 @@ public class LZWTool {
 
     private static List<Character> loadAlphabet(String path) {
 
-        List<Character> alphabet = new ArrayList<>();
+        // Pre-allocate with max extended ASCII size
+        List<Character> alphabet = new ArrayList<>(256);
 
-        // LinkedHashSet preserves insertion order while ensuring uniqueness
-        Set<Character> seen = new LinkedHashSet<>();
+        // Use boolean array instead of HashSet for O(1) lookup without boxing overhead
+        boolean[] seen = new boolean[256];
 
         // Always hardcode include CR and LF in the alphabet
-        alphabet.add('\r'); seen.add('\r');
-        alphabet.add('\n'); seen.add('\n');
+        alphabet.add('\r'); seen['\r'] = true;
+        alphabet.add('\n'); seen['\n'] = true;
 
         // our extended ascii dictionary is stored in UTF-8 bruh so we gotta read it in UTF-8 before converting into 1 byte chars
         try (InputStreamReader reader = new InputStreamReader(new FileInputStream(path), "UTF-8")) {
 
-            StringBuilder lineBuffer = new StringBuilder(); // stores all chars of current line until newline
+            // Pre-allocate with typical line length
+            StringBuilder lineBuffer = new StringBuilder(16); // stores all chars of current line until newline
             int c; // Current character being read
 
             // Read character by character to handle line endings precisely
@@ -475,14 +477,16 @@ public class LZWTool {
                 if (c == '\n') {
                     // Found a line ending - process the line (if not, see else)
 
-                    // Extract symbol - empty line = null, otherwise first char
-                    // symbol can only be null on LF systems, not CRLF or CR only systems
-                    Character symbol = (lineBuffer.length() == 0) ? null : lineBuffer.charAt(0);
+                    // Extract symbol - empty line skipped, otherwise first char
+                    // Use primitive char to avoid boxing overhead
+                    if (lineBuffer.length() > 0) {
+                        char symbol = lineBuffer.charAt(0);
 
-                    // Add to alphabet only if we haven't seen it before
-                    if (symbol != null && !seen.contains(symbol)) {
-                        seen.add(symbol);
-                        alphabet.add(symbol);
+                        // Add to alphabet only if we haven't seen it before
+                        if (!seen[symbol]) {
+                            seen[symbol] = true;
+                            alphabet.add(symbol);
+                        }
                     }
 
                     // Reset buffer for next line
@@ -496,10 +500,10 @@ public class LZWTool {
             // Handle last line if file doesn't end with newline
             if (lineBuffer.length() > 0) {
 
-                // Extract first character as symbol
-                Character symbol = lineBuffer.charAt(0);
-                if (!seen.contains(symbol)) {
-                    seen.add(symbol);
+                // Extract first character as symbol (use primitive char)
+                char symbol = lineBuffer.charAt(0);
+                if (!seen[symbol]) {
+                    seen[symbol] = true;
                     alphabet.add(symbol);
                 }
             }
@@ -1059,13 +1063,14 @@ public class LZWTool {
         }
         BinaryStdOut.write(policyCode, 8);
 
-        // Write base alphabet size (allows decoder to know how many symbols to read)
-        BinaryStdOut.write(alphabet.size(), 16);
+        // Cache alphabet size to avoid multiple method calls
+        int alphabetSize = alphabet.size();
+        BinaryStdOut.write(alphabetSize, 16);
 
         // Write each symbol as a single byte (char value)
+        // No null check needed - alphabet should never contain null by design
         for (Character symbol : alphabet) {
-             // added ternary 0 check, technically should never happen
-            BinaryStdOut.write(symbol != null ? symbol : 0, 8);
+            BinaryStdOut.write(symbol, 8);
         }
     }
 
@@ -1080,7 +1085,8 @@ public class LZWTool {
         int alphabetSize = BinaryStdIn.readInt(16);
         header.alphabetSize = alphabetSize;
 
-        header.alphabet = new ArrayList<>();
+        // Pre-allocate ArrayList with known size to avoid resizing
+        header.alphabet = new ArrayList<>(alphabetSize);
         for (int i = 0; i < alphabetSize; i++) {
             header.alphabet.add(BinaryStdIn.readChar(8));
         }
